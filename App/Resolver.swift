@@ -1,9 +1,13 @@
 import Foundation
 
 /// A resolved track plus whether it is actually playing (vs paused).
+/// Also carries the source service's own artwork (URL for Spotify /
+/// Last.fm, data for Apple Music) as an artwork fallback / pick option.
 public struct ResolvedTrack {
     public var track: Track
     public var isPlaying: Bool
+    public var sourceArtworkURL: String? = nil
+    public var sourceArtworkData: Data? = nil
 }
 
 /// Source resolution. "auto" means: prefer what is actually playing
@@ -26,15 +30,18 @@ public enum Resolver {
         switch settings.source {
         case "spotify":
             guard let st = try? await SpotifyClient(settings: settings).fetchPlayer() else { return nil }
-            return ResolvedTrack(track: st.track, isPlaying: st.isPlaying)
+            return ResolvedTrack(track: st.track, isPlaying: st.isPlaying,
+                                 sourceArtworkURL: st.artworkURL)
         case "applemusic":
             guard let t = AppleMusicClient.currentTrack() else { return nil }
-            return ResolvedTrack(track: t, isPlaying: AppleMusicClient.isPlaying)
+            return ResolvedTrack(track: t, isPlaying: AppleMusicClient.isPlaying,
+                                 sourceArtworkData: AppleMusicClient.currentArtworkData())
         case "lastfm":
             guard let r = try? await LastFmClient.fetchRecent(username: settings.lastfmUsername,
                                                               apiKey: settings.lastfmAPIKey)
             else { return nil }
-            return ResolvedTrack(track: r.track, isPlaying: r.isPlaying)
+            return ResolvedTrack(track: r.track, isPlaying: r.isPlaying,
+                                 sourceArtworkURL: r.imageURL)
         default:
             return await resolveAuto(settings: settings)
         }
@@ -48,23 +55,28 @@ public enum Resolver {
 
         // 1. Spotify playing on this device.
         if let st = spotify, st.isPlaying, st.isThisDevice {
-            return ResolvedTrack(track: st.track, isPlaying: true)
+            return ResolvedTrack(track: st.track, isPlaying: true,
+                                 sourceArtworkURL: st.artworkURL)
         }
         // 2. Apple Music playing on this device.
         if applePlaying, let am = appleTrack {
-            return ResolvedTrack(track: am, isPlaying: true)
+            return ResolvedTrack(track: am, isPlaying: true,
+                                 sourceArtworkData: AppleMusicClient.currentArtworkData())
         }
         // 3. Spotify paused on this device (just paused here).
         if let st = spotify, st.isThisDevice {
-            return ResolvedTrack(track: st.track, isPlaying: false)
+            return ResolvedTrack(track: st.track, isPlaying: false,
+                                 sourceArtworkURL: st.artworkURL)
         }
         // 4. Apple Music paused track on this device.
         if let am = appleTrack {
-            return ResolvedTrack(track: am, isPlaying: false)
+            return ResolvedTrack(track: am, isPlaying: false,
+                                 sourceArtworkData: AppleMusicClient.currentArtworkData())
         }
         // 5. Anything Spotify reports elsewhere, rather than nothing.
         if let st = spotify {
-            return ResolvedTrack(track: st.track, isPlaying: st.isPlaying)
+            return ResolvedTrack(track: st.track, isPlaying: st.isPlaying,
+                                 sourceArtworkURL: st.artworkURL)
         }
         return nil
     }
