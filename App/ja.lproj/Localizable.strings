@@ -29,8 +29,6 @@
 "Post to Misskey" = "Misskey に投稿";
 "Posted" = "投稿しました";
 "X API" = "X API";
-"API Key" = "API Key";
-"API Secret" = "API Secret";
 "Access Token" = "アクセストークン";
 "Access Token Secret" = "アクセストークンシークレット";
 "Create an app at developer.x.com, set its permissions to Read and Write, then generate the access token for your account. Generate the token after setting Write permission, otherwise posting fails." = "developer.x.com でアプリを作成し、権限を Read and Write に設定してから、自分のアカウントのアクセストークンを発行してください。トークンは Write 権限を設定した後に発行しないと投稿できません。";
@@ -67,4 +65,11 @@
 "Copy post text" = "投稿文をコピー";
 "Fetch Now Playing" = "今の曲を取得";
 "Open NowPlaying" = "NowPlaying を開く";
-"Nothing is playing" = "再生中の曲がありません";
+"Client ID" = "クライアントID";
+"Client Secret" = "クライアントシークレット";
+"Handle" = "ハンドル";
+"Instance" = "インスタンス";
+"Configured" = "設定済み";
+"Not configured" = "未設定";
+"About" = "このアプリについて";
+"Version" = "バージョン";
