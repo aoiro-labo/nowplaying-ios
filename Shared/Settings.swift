@@ -1,10 +1,10 @@
 import Foundation
 
 /// Settings shared between the app and the widget through an App Group.
-/// Mirrors the "NowPlaying Config" memo semantics of the shortcut version.
+/// User settings, shared between the app and the widget via App Group.
 public final class NPSettings {
     public static let groupID = "group.jp.aoiro.nowplaying"
-    public static let defaultClientID = "57587038d5d947d486ba6b9a4f40c4d9"
+    public static let defaultClientID = ""
     public static let defaultFormat = "#NowPlaying {track} - {artist} ({album})"
 
     private let d: UserDefaults
