@@ -47,8 +47,6 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, minHeight: 200)
                     }
 
-                    actionsRow
-
                     if track != nil {
                         destinationsRow
                     }
@@ -73,6 +71,13 @@ struct ContentView: View {
                 .padding(.bottom, 24)
             }
             .background(Color(uiColor: .systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                actionsRow
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
+                    .background(.bar)
+            }
             .navigationTitle("NowPlaying")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
