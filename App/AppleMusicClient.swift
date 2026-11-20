@@ -29,4 +29,13 @@ public enum AppleMusicClient {
                      source: "applemusic",
                      spotifyURL: nil)
     }
+
+    /// The now-playing item's own artwork, used as a fallback when the
+    /// iTunes match has no artwork and as a manual pick option.
+    public static func currentArtworkData() -> Data? {
+        guard let item = MPMusicPlayerController.systemMusicPlayer.nowPlayingItem,
+              let art = item.artwork,
+              let img = art.image(at: CGSize(width: 600, height: 600)) else { return nil }
+        return img.jpegData(compressionQuality: 0.9) ?? img.pngData()
+    }
 }
