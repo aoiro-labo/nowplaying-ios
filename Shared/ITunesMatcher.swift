@@ -59,9 +59,30 @@ public enum ITunesMatcher {
 
     public static func search(track: Track, quality: String) async
         -> (match: ITunesMatch?, artworkData: Data?, candidates: [ITunesCandidate]) {
-        // Two queries, merged: by title (finds singles) and by album
-        // (finds the track on its album even when karaoke singles flood
-        // the title results). 25 results each, ranked locally below.
+        let albumN = normalizeAlbum(track.album)
+        let titleN = normalizeTitle(track.title)
+        let artistsN = normalizeArtist(track.artistsJoined)
+        let artistFirstN = normalizeArtist(track.artistFirst)
+        func albumOK(_ c: ITunesCandidate) -> Bool { normalizeAlbum(c.collectionName) == albumN }
+        func titleOK(_ c: ITunesCandidate) -> Bool { normalizeTitle(c.trackName) == titleN }
+        func artistOK(_ c: ITunesCandidate) -> Bool {
+            let a = normalizeArtist(c.artistName)
+            return a == artistsN || a == artistFirstN
+        }
+
+        // Album-first: find the album itself (exact name match), then
+        // look up its track list. This is deterministic and immune to
+        // the song search's popularity ranking, which in the JP
+        // storefront floods the results with karaoke-label singles.
+        var albumPick: ITunesCandidate? = nil
+        var albumTracks: [ITunesCandidate] = []
+        if !track.album.isEmpty, let collId = await findAlbumID(track: track) {
+            albumTracks = await lookupAlbumTracks(collectionId: collId)
+            albumPick = albumTracks.first { titleOK($0) }
+        }
+
+        // Song searches (by title, then by album), merged: candidates
+        // for the picker and the fallback tiers below.
         var merged: [ITunesCandidate] = []
         var seen = Set<String>()
         for term in ["\(track.title) \(track.artistFirst)",
@@ -81,19 +102,20 @@ public enum ITunesMatcher {
             candidates = merged.filter { !isKaraoke($0.trackName) && !isKaraoke($0.collectionName) }
             if candidates.isEmpty { candidates = merged }
         }
+        // The verified album's tracks lead the candidate list.
+        if !albumTracks.isEmpty {
+            var head: [ITunesCandidate] = []
+            var keys = Set<String>()
+            for c in albumTracks + candidates {
+                let key = c.trackViewURL.isEmpty ? c.artworkURL100 : c.trackViewURL
+                if keys.insert(key).inserted { head.append(c) }
+            }
+            candidates = head
+        }
         guard !candidates.isEmpty else { return (nil, nil, []) }
 
-        let albumN = normalizeAlbum(track.album)
-        let titleN = normalizeTitle(track.title)
-        let artistsN = normalizeArtist(track.artistsJoined)
-        let artistFirstN = normalizeArtist(track.artistFirst)
-        func albumOK(_ c: ITunesCandidate) -> Bool { normalizeAlbum(c.collectionName) == albumN }
-        func titleOK(_ c: ITunesCandidate) -> Bool { normalizeTitle(c.trackName) == titleN }
-        func artistOK(_ c: ITunesCandidate) -> Bool {
-            let a = normalizeArtist(c.artistName)
-            return a == artistsN || a == artistFirstN
-        }
-        let pick = candidates.first { titleOK($0) && albumOK($0) && artistOK($0) }
+        let pick = albumPick
+            ?? candidates.first { titleOK($0) && albumOK($0) && artistOK($0) }
             ?? candidates.first { titleOK($0) && albumOK($0) }
             ?? candidates.first { albumOK($0) }
             ?? candidates[0]
@@ -113,6 +135,58 @@ public enum ITunesMatcher {
 
     private static func isKaraoke(_ s: String) -> Bool {
         s.contains("カラオケ") || s.lowercased().contains("karaoke")
+    }
+
+    /// Finds the album's collectionId by exact (normalized) name.
+    private static func findAlbumID(track: Track) async -> Int? {
+        for term in [track.album, "\(track.album) \(track.artistFirst)"] {
+            var comps = URLComponents(string: "https://itunes.apple.com/search")!
+            comps.queryItems = [
+                URLQueryItem(name: "term", value: term),
+                URLQueryItem(name: "media", value: "music"),
+                URLQueryItem(name: "entity", value: "album"),
+                URLQueryItem(name: "limit", value: "10"),
+                URLQueryItem(name: "country", value: "JP"),
+            ]
+            guard let url = comps.url,
+                  let (data, _) = try? await URLSession.shared.data(from: url),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let results = obj["results"] as? [[String: Any]] else { continue }
+            for r in results {
+                if let name = r["collectionName"] as? String,
+                   normalizeAlbum(name) == normalizeAlbum(track.album),
+                   let id = r["collectionId"] as? Int {
+                    return id
+                }
+            }
+        }
+        return nil
+    }
+
+    /// All songs on an album, via the lookup endpoint.
+    private static func lookupAlbumTracks(collectionId: Int) async -> [ITunesCandidate] {
+        var comps = URLComponents(string: "https://itunes.apple.com/lookup")!
+        comps.queryItems = [
+            URLQueryItem(name: "id", value: String(collectionId)),
+            URLQueryItem(name: "entity", value: "song"),
+            URLQueryItem(name: "limit", value: "100"),
+            URLQueryItem(name: "country", value: "JP"),
+        ]
+        guard let url = comps.url,
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let results = obj["results"] as? [[String: Any]] else {
+            return []
+        }
+        return results.compactMap { r in
+            guard (r["kind"] as? String) == "song",
+                  let art = r["artworkUrl100"] as? String else { return nil }
+            return ITunesCandidate(trackName: (r["trackName"] as? String) ?? "",
+                                   artistName: (r["artistName"] as? String) ?? "",
+                                   collectionName: (r["collectionName"] as? String) ?? "",
+                                   artworkURL100: art,
+                                   trackViewURL: (r["trackViewUrl"] as? String) ?? "")
+        }
     }
 
     private static func fetchCandidates(term: String) async -> [ITunesCandidate] {
