@@ -113,27 +113,44 @@ struct ContentView: View {
                     }
                     if !history.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("History")
-                                .font(.subheadline).bold()
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            HStack {
+                                Text("History")
+                                    .font(.subheadline).bold()
+                                Spacer()
+                                Button("Clear all") { clearHistory() }
+                                    .font(.caption)
+                            }
                             ForEach(history, id: \.date) { item in
                                 Button {
                                     Task { await restore(item) }
                                 } label: {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(item.track.title).font(.footnote).bold()
-                                            .lineLimit(1)
-                                        Text(item.track.artistsJoined).font(.caption)
-                                            .foregroundStyle(.secondary).lineLimit(1)
-                                        Text(item.date, style: .time).font(.caption2)
-                                            .foregroundStyle(.secondary)
+                                    HStack(spacing: 10) {
+                                        historyThumb(item)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(item.track.title).font(.footnote).bold()
+                                                .lineLimit(1)
+                                            Text(item.track.artistsJoined).font(.caption)
+                                                .foregroundStyle(.secondary).lineLimit(1)
+                                        }
+                                        Spacer()
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            Text(item.date, style: .time)
+                                                .font(.caption2).foregroundStyle(.secondary)
+                                            Text(item.track.source == "spotify" ? "Spotify" : "Apple Music")
+                                                .font(.caption2).foregroundStyle(.secondary)
+                                        }
                                     }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(8)
                                     .background(Color.secondary.opacity(0.08))
                                     .cornerRadius(8)
                                 }
                                 .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button("Copy post text") {
+                                        UIPasteboard.general.string = item.text
+                                    }
+                                    Button("Delete", role: .destructive) { deleteHistoryItem(item) }
+                                }
                             }
                         }
                     }
@@ -226,6 +243,35 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private func historyThumb(_ item: HistoryItem) -> some View {
+        if let d = item.artworkData, let img = UIImage(data: d) {
+            Image(uiImage: img)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 44, height: 44)
+                .cornerRadius(6)
+                .clipped()
+        } else {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.secondary.opacity(0.2))
+                .frame(width: 44, height: 44)
+                .overlay(Image(systemName: "music.note").foregroundStyle(.secondary))
+        }
+    }
+
+    private func deleteHistoryItem(_ item: HistoryItem) {
+        var h = settings.history
+        h.removeAll { $0.date == item.date && $0.track == item.track }
+        settings.history = h
+        history = h
+    }
+
+    private func clearHistory() {
+        settings.history = []
+        history = []
+    }
+
     private func applyPreset(_ preset: String) {
         settings.format = preset
         guard let t = track else { return }
@@ -269,7 +315,7 @@ struct ContentView: View {
         artwork = artworkData.flatMap { UIImage(data: $0) }
         status = ""
         settings.cachedTrack = t
-        settings.addHistory(track: t, text: composed.text)
+        settings.addHistory(track: t, text: composed.text, artworkData: artData)
         history = settings.history
         WidgetCenter.shared.reloadAllTimelines()
     }
