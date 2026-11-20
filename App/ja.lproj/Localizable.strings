@@ -83,3 +83,7 @@
 "Tap a preset to switch. Editing the field updates the selected preset. Swipe to delete." = "タップで切替。欄を編集すると選択中のプリセットも更新されます。スワイプで削除。";
 "About" = "このアプリについて";
 "Version" = "バージョン";
+"Artwork priority" = "ジャケ写の優先順位";
+"Source service" = "再生元サービス";
+"YouTube Music" = "YouTube Music";
+"The first source in this order with an exact album match provides the artwork. Use Edit (top left) to reorder." = "アルバム名が完全一致したソースのうち、この順序で最初に当たったものがジャケ写になります。左上の「編集」から並び替えできます。";
