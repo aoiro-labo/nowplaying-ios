@@ -116,6 +116,9 @@ struct ContentView: View {
                     .scaledToFit()
                     .frame(maxHeight: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .contextMenu {
+                        Button("Report wrong artwork") { openURL(artworkReportURL()) }
+                    }
             }
             VStack(spacing: 4) {
                 Text(t.title)
@@ -292,6 +295,42 @@ struct ContentView: View {
             .font(.subheadline)
             .buttonStyle(.bordered)
             .controlSize(.small)
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+    }
+
+    /// Prefilled GitHub issue for a wrong artwork pick: track info plus
+    /// the iTunes result that was chosen, so the case can be reproduced.
+    private func artworkReportURL() -> URL {
+        let t = track
+        let body = """
+        ## 種別
+        ジャケ写の選択ミス
+
+        ## 曲
+        - タイトル: \(t?.title ?? "")
+        - アーティスト: \(t?.artistsJoined ?? "")
+        - アルバム: \(t?.album ?? "")
+        - 取得元: \(t?.source ?? "")
+
+        ## 選ばれた iTunes 結果
+        - trackViewUrl: \(lastMatch?.trackViewURL ?? "-")
+        - artworkUrl100: \(lastMatch?.artworkURL100 ?? "-")
+
+        ## アプリ
+        - バージョン: \(appVersion)
+
+        ## 期待するジャケ写・補足
+        （あれば記入）
+        """
+        var comps = URLComponents(string: "https://github.com/aoiro-labo/nowplaying-app/issues/new")!
+        comps.queryItems = [
+            URLQueryItem(name: "title", value: "[ジャケ写] \(t?.title ?? "")"),
+            URLQueryItem(name: "body", value: body),
+        ]
+        return comps.url!
     }
 
     private func sourceName(_ source: String) -> String {
