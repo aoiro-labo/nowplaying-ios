@@ -71,6 +71,8 @@
 "Instance" = "インスタンス";
 "Configured" = "設定済み";
 "Not configured" = "未設定";
+"Report wrong artwork" = "ジャケ写の間違いを報告";
+"Report a problem" = "問題を報告";
 "Close" = "閉じる";
 "Tap a preset to switch. Editing the field updates the selected preset. Swipe to delete." = "タップで切替。欄を編集すると選択中のプリセットも更新されます。スワイプで削除。";
 "About" = "このアプリについて";
