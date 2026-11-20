@@ -20,6 +20,13 @@ struct ContentView: View {
     @State private var artwork: UIImage?
     @State private var artworkData: Data?
     @State private var lastMatch: ITunesMatch?
+    @State private var autoMatch: ITunesMatch?
+    @State private var autoArtData: Data?
+    @State private var candidates: [ITunesCandidate] = []
+    @State private var mbCandidates: [MBCandidate] = []
+    @State private var sourceArtworkData: Data?
+    @State private var manualPick: ArtworkPick = .auto
+    @State private var showArtworkPicker = false
     @State private var status: String = ""
     @State private var postStatus: String = ""
     @State private var history: [HistoryItem] = []
@@ -102,6 +109,17 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings, onDismiss: { history = settings.history }) {
                 SettingsView()
             }
+            .sheet(isPresented: $showArtworkPicker) {
+                ArtworkPickerView(
+                    candidates: candidates,
+                    mbCandidates: mbCandidates,
+                    autoMatch: autoMatch,
+                    sourceArtworkData: sourceArtworkData,
+                    sourceName: track.map { sourceName($0.source) } ?? "",
+                    initial: manualPick,
+                    onApply: { pick in Task { await applyPick(pick) } },
+                    onReport: { pick in openURL(artworkReportURL(correctPick: pick)) })
+            }
             .task { await refresh() }
         }
     }
@@ -117,6 +135,9 @@ struct ContentView: View {
                     .frame(maxHeight: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .contextMenu {
+                        if !candidates.isEmpty || !mbCandidates.isEmpty || sourceArtworkData != nil {
+                            Button("Choose artwork") { showArtworkPicker = true }
+                        }
                         Button("Report wrong artwork") { openURL(artworkReportURL()) }
                     }
             }
@@ -301,10 +322,37 @@ struct ContentView: View {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
     }
 
-    /// Prefilled GitHub issue for a wrong artwork pick: track info plus
-    /// the iTunes result that was chosen, so the case can be reproduced.
-    private func artworkReportURL() -> URL {
+    /// Prefilled GitHub issue for a wrong artwork pick: the track, the
+    /// auto-chosen iTunes result, the correct one when the user picked
+    /// it by hand, and the full candidate list for reproduction.
+    private func artworkReportURL(correctPick: ArtworkPick? = nil) -> URL {
         let t = track
+        let pick = correctPick ?? manualPick
+        var correct = "（未選択）"
+        switch pick {
+        case .candidate(let i) where candidates.indices.contains(i):
+            let c = candidates[i]
+            correct = """
+            - コレクション: \(c.collectionName)
+            - trackViewUrl: \(c.trackViewURL)
+            - artworkUrl100: \(c.artworkURL100)
+            """
+        case .musicbrainz(let i) where mbCandidates.indices.contains(i):
+            let c = mbCandidates[i]
+            correct = """
+            MusicBrainz のリリース
+            - リリース: \(c.releaseTitle)
+            - \(c.pageURL)
+            - ジャケ写: \(c.artworkURL)
+            """
+        case .source:
+            correct = "再生元サービス（\(t.map { sourceName($0.source) } ?? "")）のジャケ写"
+        default:
+            break
+        }
+        let candidateList = candidates.enumerated().map {
+            "\($0.offset + 1). \($0.element.collectionName) — \($0.element.trackViewURL)"
+        }.joined(separator: "\n")
         let body = """
         ## 種別
         ジャケ写の選択ミス
@@ -315,15 +363,18 @@ struct ContentView: View {
         - アルバム: \(t?.album ?? "")
         - 取得元: \(t?.source ?? "")
 
-        ## 選ばれた iTunes 結果
-        - trackViewUrl: \(lastMatch?.trackViewURL ?? "-")
-        - artworkUrl100: \(lastMatch?.artworkURL100 ?? "-")
+        ## 自動で選ばれた iTunes 結果
+        - trackViewUrl: \(autoMatch?.trackViewURL ?? "-")
+        - artworkUrl100: \(autoMatch?.artworkURL100 ?? "-")
+
+        ## 正解として選ばれた結果
+        \(correct)
+
+        ## 候補一覧
+        \(candidateList.isEmpty ? "（なし）" : candidateList)
 
         ## アプリ
         - バージョン: \(appVersion)
-
-        ## 期待するジャケ写・補足
-        （あれば記入）
         """
         var comps = URLComponents(string: "https://github.com/aoiro-labo/nowplaying-app/issues/new")!
         comps.queryItems = [
@@ -331,6 +382,56 @@ struct ContentView: View {
             URLQueryItem(name: "body", value: body),
         ]
         return comps.url!
+    }
+
+    /// Applies a manual artwork pick: swaps the effective iTunes match
+    /// (which drives both the artwork and the post URL) and recomposes.
+    private func applyPick(_ pick: ArtworkPick) async {
+        manualPick = pick
+        switch pick {
+        case .auto:
+            lastMatch = autoMatch
+            artworkData = settings.artworkEnabled ? (autoArtData ?? sourceArtworkData) : nil
+        case .candidate(let i):
+            guard candidates.indices.contains(i) else { return }
+            let c = candidates[i]
+            lastMatch = c.match
+            let d = await loadArtworkData(url100: c.artworkURL100)
+            artworkData = settings.artworkEnabled ? (d ?? autoArtData ?? sourceArtworkData) : nil
+        case .musicbrainz(let i):
+            // MusicBrainz picks change only the artwork; the post URL
+            // keeps coming from the iTunes match / source service.
+            guard mbCandidates.indices.contains(i) else { return }
+            let c = mbCandidates[i]
+            let u = settings.artworkQuality == "high" ? c.artworkURLHigh : c.artworkURL
+            if let url = URL(string: u),
+               let (d, resp) = try? await URLSession.shared.data(from: url),
+               (resp as? HTTPURLResponse)?.statusCode == 200 {
+                artworkData = settings.artworkEnabled ? d : nil
+            }
+        case .source:
+            lastMatch = nil
+            artworkData = settings.artworkEnabled ? (sourceArtworkData ?? autoArtData) : nil
+        }
+        artwork = artworkData.flatMap { UIImage(data: $0) }
+        if let t = track {
+            postText = Composer.compose(track: t, itunes: lastMatch, settings: settings).text
+        }
+    }
+
+    private func loadArtworkData(url100: String) async -> Data? {
+        let high = settings.artworkQuality == "high"
+        let wanted = high
+            ? url100.replacingOccurrences(of: "100x100bb", with: "1200x1200bb")
+            : url100
+        if let u = URL(string: wanted), let (d, _) = try? await URLSession.shared.data(from: u) {
+            return d
+        }
+        if high, let u = URL(string: url100),
+           let (d, _) = try? await URLSession.shared.data(from: u) {
+            return d
+        }
+        return nil
     }
 
     private func sourceName(_ source: String) -> String {
@@ -451,8 +552,14 @@ struct ContentView: View {
         postText = item.text
         status = ""
         postStatus = ""
-        let (match, artData) = await ITunesMatcher.search(track: item.track, quality: settings.artworkQuality)
+        let (match, artData, _) = await ITunesMatcher.search(track: item.track, quality: settings.artworkQuality)
         lastMatch = match
+        autoMatch = match
+        autoArtData = artData
+        candidates = []
+        mbCandidates = []
+        sourceArtworkData = nil
+        manualPick = .auto
         artworkData = settings.artworkEnabled ? artData : nil
         artwork = artworkData.flatMap { UIImage(data: $0) }
     }
@@ -472,13 +579,26 @@ struct ContentView: View {
             return
         }
         let t = resolved.track
-        let (match, artData) = await ITunesMatcher.search(track: t, quality: settings.artworkQuality)
+        // The source service's own artwork: fallback when the iTunes
+        // match has none, and a manual pick option.
+        var srcData = resolved.sourceArtworkData
+        if srcData == nil, let urlStr = resolved.sourceArtworkURL, let u = URL(string: urlStr),
+           let (d, _) = try? await URLSession.shared.data(from: u) {
+            srcData = d
+        }
+        sourceArtworkData = srcData
+        let (match, artData, cands) = await ITunesMatcher.search(track: t, quality: settings.artworkQuality)
         let composed = Composer.compose(track: t, itunes: match, settings: settings)
         track = t
         isPlaying = resolved.isPlaying
+        autoMatch = match
+        autoArtData = artData
+        candidates = cands
+        mbCandidates = []
+        manualPick = .auto
         lastMatch = match
         postText = composed.text
-        artworkData = settings.artworkEnabled ? artData : nil
+        artworkData = settings.artworkEnabled ? (artData ?? srcData) : nil
         artwork = artworkData.flatMap { UIImage(data: $0) }
         status = ""
         settings.cachedTrack = t
@@ -486,6 +606,27 @@ struct ContentView: View {
         history = settings.history
         sendNowPlayingIfEnabled(t)
         WidgetCenter.shared.reloadAllTimelines()
+
+        // MusicBrainz: extra artwork candidates, plus a fallback when
+        // the iTunes match brought no artwork (before the source
+        // service's own artwork, which is already in place above).
+        guard settings.artworkEnabled else { return }
+        let mbs = await MusicBrainzClient.searchReleases(track: t)
+        guard track?.title == t.title, track?.album == t.album else { return }
+        mbCandidates = mbs
+        if artData == nil, manualPick == .auto {
+            let albumN = ITunesMatcher.normalizeAlbum(t.album)
+            if let hit = mbs.first(where: { ITunesMatcher.normalizeAlbum($0.releaseTitle) == albumN }) {
+                let u = settings.artworkQuality == "high" ? hit.artworkURLHigh : hit.artworkURL
+                if let url = URL(string: u),
+                   let (d, resp) = try? await URLSession.shared.data(from: url),
+                   (resp as? HTTPURLResponse)?.statusCode == 200,
+                   track?.title == t.title {
+                    artworkData = d
+                    artwork = UIImage(data: d)
+                }
+            }
+        }
     }
 
     /// Approximate X (Twitter) weighted character count: URLs count as 23,
@@ -525,4 +666,166 @@ struct ShareSheet: UIViewControllerRepresentable {
         UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/// Which artwork the user picked by hand: the automatic iTunes match,
+/// one of the iTunes candidates, or the source service's own artwork.
+enum ArtworkPick: Equatable {
+    case auto
+    case candidate(Int)
+    case musicbrainz(Int)
+    case source
+}
+
+/// Artwork candidate picker. Tapping a row selects it; Apply swaps the
+/// artwork (and the post URL) to the selection, and "Report as correct"
+/// opens a GitHub issue with the selection as the correct answer.
+struct ArtworkPickerView: View {
+    let candidates: [ITunesCandidate]
+    let mbCandidates: [MBCandidate]
+    let autoMatch: ITunesMatch?
+    let sourceArtworkData: Data?
+    let sourceName: String
+    let initial: ArtworkPick
+    let onApply: (ArtworkPick) -> Void
+    let onReport: (ArtworkPick) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selection: ArtworkPick = .auto
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    autoRow
+                    ForEach(candidates.indices, id: \.self) { i in
+                        candidateRow(i)
+                    }
+                    if let d = sourceArtworkData, let img = UIImage(data: d) {
+                        pickRow(selection: .source, thumb: .image(img),
+                                title: NSLocalizedString("Source service artwork", comment: ""),
+                                subtitle: sourceName)
+                    }
+                } header: {
+                    Text("Artwork candidates")
+                }
+                if !mbCandidates.isEmpty {
+                    Section {
+                        ForEach(mbCandidates.indices, id: \.self) { i in
+                            mbRow(i)
+                        }
+                    } header: {
+                        Text("MusicBrainz")
+                    }
+                }
+            }
+            .navigationTitle("Choose artwork")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack(spacing: 12) {
+                    if selection != .auto {
+                        Button("Report as correct") {
+                            onReport(selection)
+                            dismiss()
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity)
+                    }
+                    Button("Apply") {
+                        onApply(selection)
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+                .background(.bar)
+            }
+            .onAppear { selection = initial }
+        }
+    }
+
+    private enum Thumb {
+        case url(String)
+        case image(UIImage)
+        case none
+    }
+
+    private var autoCandidate: ITunesCandidate? {
+        guard let m = autoMatch else { return nil }
+        return candidates.first { $0.trackViewURL == m.trackViewURL }
+    }
+
+    private var autoRow: some View {
+        pickRow(selection: .auto,
+                thumb: autoCandidate.map { .url($0.artworkURL100) } ?? .none,
+                title: NSLocalizedString("Auto-selected", comment: ""),
+                subtitle: autoCandidate?.collectionName ?? "—")
+    }
+
+    private func candidateRow(_ i: Int) -> some View {
+        let c = candidates[i]
+        return pickRow(selection: .candidate(i),
+                       thumb: .url(c.artworkURL100),
+                       title: c.collectionName.isEmpty ? c.trackName : c.collectionName,
+                       subtitle: "\(c.trackName) — \(c.artistName)")
+    }
+
+    private func mbRow(_ i: Int) -> some View {
+        let c = mbCandidates[i]
+        let sub = c.date.isEmpty ? c.artistName : "\(c.artistName) · \(c.date)"
+        return pickRow(selection: .musicbrainz(i),
+                       thumb: .url(c.artworkURL),
+                       title: c.releaseTitle,
+                       subtitle: sub)
+    }
+
+    private func pickRow(selection pick: ArtworkPick, thumb: Thumb,
+                         title: String, subtitle: String) -> some View {
+        Button {
+            selection = pick
+        } label: {
+            HStack(spacing: 12) {
+                thumbView(thumb)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.subheadline).bold().lineLimit(1)
+                    Text(subtitle).font(.caption)
+                        .foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer()
+                if selection == pick {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.tint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func thumbView(_ thumb: Thumb) -> some View {
+        Group {
+            switch thumb {
+            case .url(let s):
+                AsyncImage(url: URL(string: s)) { img in
+                    img.resizable().scaledToFill()
+                } placeholder: {
+                    Color.secondary.opacity(0.2)
+                }
+            case .image(let img):
+                Image(uiImage: img).resizable().scaledToFill()
+            case .none:
+                Color.secondary.opacity(0.2)
+                    .overlay(Image(systemName: "music.note").foregroundStyle(.secondary))
+            }
+        }
+        .frame(width: 44, height: 44)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
 }
