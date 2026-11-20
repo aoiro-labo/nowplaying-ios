@@ -116,6 +116,30 @@ public final class NPSettings {
         }
     }
 
+    // Last.fm (read source + optional scrobble integration)
+    public var lastfmUsername: String {
+        get { d.string(forKey: "lastfmUsername") ?? "" }
+        set { d.set(newValue, forKey: "lastfmUsername") }
+    }
+    public var lastfmAPIKey: String {
+        get { d.string(forKey: "lastfmAPIKey") ?? "" }
+        set { d.set(newValue, forKey: "lastfmAPIKey") }
+    }
+    public var lastfmAPISecret: String {
+        get { d.string(forKey: "lastfmAPISecret") ?? "" }
+        set { d.set(newValue, forKey: "lastfmAPISecret") }
+    }
+    public var lastfmSessionKey: String {
+        get { d.string(forKey: "lastfmSessionKey") ?? "" }
+        set { d.set(newValue, forKey: "lastfmSessionKey") }
+    }
+    /// When on and connected: fetching sends track.updateNowPlaying,
+    /// and posting also scrobbles the track.
+    public var lastfmScrobble: Bool {
+        get { d.bool(forKey: "lastfmScrobble") }
+        set { d.set(newValue, forKey: "lastfmScrobble") }
+    }
+
     /// Recently fetched tracks with their composed post text, newest first.
     public var history: [HistoryItem] {
         get {
