@@ -116,9 +116,25 @@ struct NowPlayingWidget: Widget {
     }
 }
 
+@available(iOS 18.0, *)
+struct NowPlayingControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "NowPlayingControl") {
+            ControlWidgetButton(action: OpenNowPlayingIntent()) {
+                Label("NowPlaying", systemImage: "music.note")
+            }
+        }
+        .displayName("NowPlaying")
+        .description("Open NowPlaying.")
+    }
+}
+
 @main
 struct NPWidgets: WidgetBundle {
     var body: some Widget {
         NowPlayingWidget()
+        if #available(iOS 18.0, *) {
+            NowPlayingControl()
+        }
     }
 }
