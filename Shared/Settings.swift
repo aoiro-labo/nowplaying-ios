@@ -144,7 +144,13 @@ public final class NPSettings {
     public var history: [HistoryItem] {
         get {
             guard let data = d.data(forKey: "history") else { return [] }
-            return (try? JSONDecoder().decode([HistoryItem].self, from: data)) ?? []
+            let decoded = (try? JSONDecoder().decode([HistoryItem].self, from: data)) ?? []
+            // Drop duplicates already stored (same track + same text),
+            // keeping the newest occurrence.
+            var seen = Set<String>()
+            return decoded.filter {
+                seen.insert($0.track.title + "|" + $0.track.artistsJoined + "|" + $0.text).inserted
+            }
         }
         set {
             if let data = try? JSONEncoder().encode(newValue) {
@@ -155,9 +161,13 @@ public final class NPSettings {
 
     public func addHistory(track: Track, text: String, artworkData: Data? = nil) {
         var h = history
-        if let first = h.first, first.track == track, first.text == text { return }
-        h.insert(HistoryItem(track: track, text: text, date: Date(),
-                             artworkData: NPThumb.make(artworkData)), at: 0)
+        // No duplicates anywhere in the history: re-fetching a track that
+        // is already in the list moves it to the top with a fresh date
+        // (keeping its thumbnail when no new artwork came in).
+        let existing = h.first { $0.track == track && $0.text == text }
+        h.removeAll { $0.track == track && $0.text == text }
+        let art = NPThumb.make(artworkData) ?? existing?.artworkData
+        h.insert(HistoryItem(track: track, text: text, date: Date(), artworkData: art), at: 0)
         history = Array(h.prefix(20))
     }
 
