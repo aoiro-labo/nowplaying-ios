@@ -1,9 +1,10 @@
 import Foundation
 
-/// Source resolution, mirroring the shortcut's "auto" cascade:
-/// in auto mode a healthy Apple Music reading wins (it reflects what
-/// this device is playing now); otherwise Spotify's account state is
-/// used when it has an item at all.
+/// Source resolution. "auto" means: prefer what is actually playing
+/// on THIS device. The Music app's now-playing item can be a stale
+/// paused track, so Apple only wins outright while it is really
+/// playing; otherwise Spotify's state (which knows whether something
+/// is playing, and what) beats a leftover Music item.
 public enum Resolver {
     public static func resolve(settings: NPSettings) async -> Track? {
         switch settings.source {
@@ -12,11 +13,13 @@ public enum Resolver {
         case "applemusic":
             return AppleMusicClient.currentTrack()
         default:
-            if let am = AppleMusicClient.currentTrack() { return am }
+            if let am = AppleMusicClient.currentTrack(), AppleMusicClient.isPlaying {
+                return am
+            }
             if let st = try? await SpotifyClient(settings: settings).fetchPlayer() {
                 return st.track
             }
-            return nil
+            return AppleMusicClient.currentTrack()
         }
     }
 }
