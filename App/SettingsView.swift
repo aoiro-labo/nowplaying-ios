@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var mastodonToken: String = ""
     @State private var misskeyInstance: String = ""
     @State private var misskeyToken: String = ""
+    @State private var presets: [String] = []
     @State private var showProbe = false
 
     var body: some View {
@@ -68,6 +69,20 @@ struct SettingsView: View {
                     TextField("{track} {artist} {album} {url}", text: $format, axis: .vertical)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                }
+                Section("Format presets") {
+                    ForEach(presets, id: \.self) { preset in
+                        Button(preset) { format = preset }
+                            .foregroundStyle(.primary)
+                            .font(.footnote)
+                    }
+                    .onDelete { presets.remove(atOffsets: $0) }
+                    Button("Add current format as preset") {
+                        let f = format.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !f.isEmpty, !presets.contains(f) { presets.append(f) }
+                    }
+                    Text("Tap a preset to use it as the format. Swipe to delete.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("X API") {
                     TextField("API Key", text: $xConsumerKey)
@@ -155,6 +170,7 @@ struct SettingsView: View {
         mastodonToken = settings.mastodonToken
         misskeyInstance = settings.misskeyInstance
         misskeyToken = settings.misskeyToken
+        presets = settings.formatPresets
     }
 
     private func save() {
@@ -177,5 +193,6 @@ struct SettingsView: View {
         settings.mastodonToken = mastodonToken.trimmingCharacters(in: .whitespacesAndNewlines)
         settings.misskeyInstance = misskeyInstance.trimmingCharacters(in: .whitespacesAndNewlines)
         settings.misskeyToken = misskeyToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.formatPresets = presets
     }
 }
