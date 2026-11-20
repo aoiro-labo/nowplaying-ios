@@ -13,10 +13,10 @@ struct FetchNowPlayingIntent: AppIntent {
         guard let resolved = await Resolver.resolveDetailed(settings: settings) else {
             return .result(value: "", dialog: "Nothing is playing")
         }
-        let (match, _) = await ITunesMatcher.search(track: resolved.track, quality: settings.artworkQuality)
+        let (match, artData) = await ITunesMatcher.search(track: resolved.track, quality: settings.artworkQuality)
         let composed = Composer.compose(track: resolved.track, itunes: match, settings: settings)
         settings.cachedTrack = resolved.track
-        settings.addHistory(track: resolved.track, text: composed.text)
+        settings.addHistory(track: resolved.track, text: composed.text, artworkData: artData)
         WidgetCenter.shared.reloadAllTimelines()
         return .result(value: composed.text, dialog: "\(composed.text)")
     }
