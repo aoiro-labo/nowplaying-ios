@@ -22,7 +22,7 @@ SpotifyやApple Musicで再生中の曲を `#NowPlaying` 投稿にするため�
 - Fetches the currently playing track from **Spotify** (Web API) or **Apple Music** (MediaPlayer)
 - **Auto** source: prefers what is actually playing on this device
 - Album artwork and track URL resolved through the iTunes Search API, preferring an exact track + album + artist match instead of blindly taking the first result
-- Long-press the artwork to pick a different candidate (iTunes, MusicBrainz, or the source service's own artwork), or to report a wrong pick as a prefilled GitHub issue; MusicBrainz and the source service also serve as artwork fallbacks
+- Long-press the artwork to pick a different candidate (iTunes, MusicBrainz, YouTube Music, or the source service's own artwork), or to report a wrong pick as a prefilled GitHub issue; the automatic priority order between the sources is configurable in Settings
 - Custom post format with `{track}` / `{artist}` / `{album}` / `{url}` placeholders, plus switchable format presets
 - Editable post text with an approximate X character count, source / playing-state badges, and a fetch history
 - Direct posting to X (app or API), Bluesky, Mastodon, and Misskey — see below
