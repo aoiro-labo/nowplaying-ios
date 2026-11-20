@@ -54,6 +54,52 @@ public final class NPSettings {
         set { d.set(newValue, forKey: "format") }
     }
 
+    // Posting destinations
+    public var xConsumerKey: String {
+        get { str("xConsumerKey", "") }
+        set { d.set(newValue, forKey: "xConsumerKey") }
+    }
+    public var xConsumerSecret: String {
+        get { str("xConsumerSecret", "") }
+        set { d.set(newValue, forKey: "xConsumerSecret") }
+    }
+    public var xAccessToken: String {
+        get { str("xAccessToken", "") }
+        set { d.set(newValue, forKey: "xAccessToken") }
+    }
+    public var xAccessTokenSecret: String {
+        get { str("xAccessTokenSecret", "") }
+        set { d.set(newValue, forKey: "xAccessTokenSecret") }
+    }
+    public var bskyHandle: String {
+        get { str("bskyHandle", "") }
+        set { d.set(newValue, forKey: "bskyHandle") }
+    }
+    public var bskyAppPassword: String {
+        get { str("bskyAppPassword", "") }
+        set { d.set(newValue, forKey: "bskyAppPassword") }
+    }
+    public var bskyServer: String {
+        get { str("bskyServer", "bsky.social") }
+        set { d.set(newValue, forKey: "bskyServer") }
+    }
+    public var mastodonInstance: String {
+        get { str("mastodonInstance", "") }
+        set { d.set(newValue, forKey: "mastodonInstance") }
+    }
+    public var mastodonToken: String {
+        get { str("mastodonToken", "") }
+        set { d.set(newValue, forKey: "mastodonToken") }
+    }
+    public var misskeyInstance: String {
+        get { str("misskeyInstance", "") }
+        set { d.set(newValue, forKey: "misskeyInstance") }
+    }
+    public var misskeyToken: String {
+        get { str("misskeyToken", "") }
+        set { d.set(newValue, forKey: "misskeyToken") }
+    }
+
     /// Last resolved track, written by the app, read by the widget as a fallback.
     public var cachedTrack: Track? {
         get {
