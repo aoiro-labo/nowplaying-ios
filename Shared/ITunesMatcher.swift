@@ -59,28 +59,27 @@ public enum ITunesMatcher {
 
     public static func search(track: Track, quality: String) async
         -> (match: ITunesMatch?, artworkData: Data?, candidates: [ITunesCandidate]) {
-        var comps = URLComponents(string: "https://itunes.apple.com/search")!
-        comps.queryItems = [
-            URLQueryItem(name: "term", value: "\(track.title) \(track.artistFirst)"),
-            URLQueryItem(name: "media", value: "music"),
-            URLQueryItem(name: "entity", value: "song"),
-            URLQueryItem(name: "limit", value: "5"),
-            URLQueryItem(name: "country", value: "JP"),
-        ]
-        guard let url = comps.url,
-              let (data, _) = try? await URLSession.shared.data(from: url),
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let results = obj["results"] as? [[String: Any]],
-              !results.isEmpty else {
-            return (nil, nil, [])
+        // Two queries, merged: by title (finds singles) and by album
+        // (finds the track on its album even when karaoke singles flood
+        // the title results). 25 results each, ranked locally below.
+        var merged: [ITunesCandidate] = []
+        var seen = Set<String>()
+        for term in ["\(track.title) \(track.artistFirst)",
+                     "\(track.album) \(track.artistFirst)"] {
+            for c in await fetchCandidates(term: term) {
+                let key = c.trackViewURL.isEmpty ? c.artworkURL100 : c.trackViewURL
+                if seen.insert(key).inserted { merged.append(c) }
+            }
         }
-        let candidates: [ITunesCandidate] = results.compactMap { r in
-            guard let art = r["artworkUrl100"] as? String else { return nil }
-            return ITunesCandidate(trackName: (r["trackName"] as? String) ?? "",
-                                   artistName: (r["artistName"] as? String) ?? "",
-                                   collectionName: (r["collectionName"] as? String) ?? "",
-                                   artworkURL100: art,
-                                   trackViewURL: (r["trackViewUrl"] as? String) ?? "")
+        // Karaoke flood control: karaoke-label releases (the Utaccha-O
+        // style singles with key variants) bury the real album in the
+        // results. Unless the source track itself is karaoke, drop
+        // candidates whose names say karaoke.
+        let sourceIsKaraoke = isKaraoke(track.title) || isKaraoke(track.album)
+        var candidates = merged
+        if !sourceIsKaraoke {
+            candidates = merged.filter { !isKaraoke($0.trackName) && !isKaraoke($0.collectionName) }
+            if candidates.isEmpty { candidates = merged }
         }
         guard !candidates.isEmpty else { return (nil, nil, []) }
 
@@ -110,5 +109,34 @@ public enum ITunesMatcher {
             artData = d
         }
         return (pick.match, artData, candidates)
+    }
+
+    private static func isKaraoke(_ s: String) -> Bool {
+        s.contains("カラオケ") || s.lowercased().contains("karaoke")
+    }
+
+    private static func fetchCandidates(term: String) async -> [ITunesCandidate] {
+        var comps = URLComponents(string: "https://itunes.apple.com/search")!
+        comps.queryItems = [
+            URLQueryItem(name: "term", value: term),
+            URLQueryItem(name: "media", value: "music"),
+            URLQueryItem(name: "entity", value: "song"),
+            URLQueryItem(name: "limit", value: "25"),
+            URLQueryItem(name: "country", value: "JP"),
+        ]
+        guard let url = comps.url,
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let results = obj["results"] as? [[String: Any]] else {
+            return []
+        }
+        return results.compactMap { r in
+            guard let art = r["artworkUrl100"] as? String else { return nil }
+            return ITunesCandidate(trackName: (r["trackName"] as? String) ?? "",
+                                   artistName: (r["artistName"] as? String) ?? "",
+                                   collectionName: (r["collectionName"] as? String) ?? "",
+                                   artworkURL100: art,
+                                   trackViewURL: (r["trackViewUrl"] as? String) ?? "")
+        }
     }
 }
