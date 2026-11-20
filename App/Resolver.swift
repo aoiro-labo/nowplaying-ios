@@ -30,6 +30,11 @@ public enum Resolver {
         case "applemusic":
             guard let t = AppleMusicClient.currentTrack() else { return nil }
             return ResolvedTrack(track: t, isPlaying: AppleMusicClient.isPlaying)
+        case "lastfm":
+            guard let r = try? await LastFmClient.fetchRecent(username: settings.lastfmUsername,
+                                                              apiKey: settings.lastfmAPIKey)
+            else { return nil }
+            return ResolvedTrack(track: r.track, isPlaying: r.isPlaying)
         default:
             return await resolveAuto(settings: settings)
         }
