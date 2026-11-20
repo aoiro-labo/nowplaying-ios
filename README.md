@@ -9,8 +9,10 @@ SpotifyやApple Musicで再生中の曲を `#NowPlaying` 投稿にするため�
 - Fetches the currently playing track from **Spotify** (Web API) or **Apple Music** (MediaPlayer)
 - **Auto** source: prefers what is actually playing on this device
 - Album artwork and track URL resolved through the iTunes Search API, matched by album (and track) name instead of blindly taking the first result
-- Custom post format with `{track}` / `{artist}` / `{album}` / `{url}` placeholders
-- Home Screen widget (medium / small) with a refresh button
+- Custom post format with `{track}` / `{artist}` / `{album}` / `{url}` placeholders, plus switchable format presets
+- Editable post text with an approximate X character count, source / playing-state badges, and a fetch history
+- Direct posting to X (app or API), Bluesky, Mastodon, and Misskey — see below
+- Home Screen widget (medium / small) with a refresh button, a Control Center control (iOS 18+), and App Shortcuts (Shortcuts / Back Tap / Siri)
 - English / Japanese UI
 
 ## Requirements
@@ -82,6 +84,10 @@ xcodebuild build -scheme NowPlaying -sdk iphoneos -configuration Release CODE_SI
 ```
 
 Pushing a tag like `v1.2` builds the app on GitHub Actions and attaches `NowPlaying.ipa` to the GitHub Release.
+
+## References
+
+The feature set was inspired by geckour's NowPlaying4Droid (Android). That project is GPLv3; no code from it is used here — this app is an independent implementation.
 
 ## License
 
