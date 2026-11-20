@@ -61,6 +61,16 @@ SpotifyやApple Musicで再生中の曲を `#NowPlaying` 投稿にするため�
 
 If the format contains `{url}`, the URL setting is ignored.
 
+## Posting destinations
+
+Besides the iOS share sheet, the app can post directly (credentials are entered in Settings; all optional):
+
+- **X (app)**: opens the X app's compose screen with the text (no image attachment).
+- **X (API)**: posts text and artwork directly through the X API. Create an app at <https://developer.x.com>, set its permissions to **Read and Write**, and generate an access token for your account *after* that change. Fill in API Key / API Secret / Access Token / Access Token Secret.
+- **Bluesky**: handle + an app password (Bluesky Settings → Privacy and Security → App Passwords). Custom PDS hosts are supported via the Server field.
+- **Mastodon**: instance host + an access token (Preferences → Development → New application, scopes `write:statuses` and `write:media`).
+- **Misskey**: instance host + an API token (Settings → API).
+
 ## Build from source
 
 The Xcode project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
