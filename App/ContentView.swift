@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WidgetKit
 
 extension View {
@@ -71,6 +72,7 @@ struct ContentView: View {
                 .padding(.bottom, 24)
             }
             .background(Color(uiColor: .systemGroupedBackground))
+            .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
                 actionsRow
                     .padding(.horizontal, 16)
@@ -83,6 +85,14 @@ struct ContentView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showSettings = true } label: {
                         Image(systemName: "gearshape")
+                    }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Close") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
                     }
                 }
             }
