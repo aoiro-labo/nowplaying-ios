@@ -39,7 +39,7 @@ public enum MusicBrainzClient {
         ]
         guard let url = comps.url else { return [] }
         var req = URLRequest(url: url)
-        req.setValue("NowPlaying/1.7 ( https://github.com/aoiro-labo/nowplaying-app )",
+        req.setValue("NowPlaying/1.7 ( https://github.com/aoiro-labo/nowplaying-ios )",
                      forHTTPHeaderField: "User-Agent")
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200,
