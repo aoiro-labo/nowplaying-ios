@@ -386,7 +386,7 @@ struct SettingsView: View {
                 Spacer()
                 Text(appVersion).foregroundStyle(.secondary)
             }
-            Link(destination: URL(string: "https://github.com/aoiro-labo/nowplaying-app")!) {
+            Link(destination: URL(string: "https://github.com/aoiro-labo/nowplaying-ios")!) {
                 HStack {
                     Text("GitHub")
                     Spacer()
@@ -412,7 +412,7 @@ struct SettingsView: View {
     }
 
     private var feedbackURL: URL {
-        var comps = URLComponents(string: "https://github.com/aoiro-labo/nowplaying-app/issues/new")!
+        var comps = URLComponents(string: "https://github.com/aoiro-labo/nowplaying-ios/issues/new")!
         comps.queryItems = [
             URLQueryItem(name: "title", value: "[フィードバック] "),
             URLQueryItem(name: "body", value: "## 内容\n\n\n## アプリ\n- バージョン: \(appVersion)\n"),
