@@ -40,8 +40,13 @@ struct Provider: AppIntentTimelineProvider {
     private func load() async -> NPEntry {
         let settings = NPSettings()
         var track: Track? = nil
-        if !settings.refreshToken.isEmpty {
-            track = try? await SpotifyClient(settings: settings).fetchPlayer().track
+        if !settings.refreshToken.isEmpty,
+           let state = try? await SpotifyClient(settings: settings).fetchPlayer(),
+           state.isPlaying || state.isThisDevice {
+            // Only accept a live track, or a paused track on this device;
+            // a paused track on another device must not win over the
+            // app's last resolved track (same rule as Resolver).
+            track = state.track
         }
         if track == nil {
             track = settings.cachedTrack
@@ -84,10 +89,10 @@ struct NPWidgetView: View {
             } else {
                 VStack(spacing: 6) {
                     Text("NowPlaying").font(.subheadline).bold()
-                    Text("曲が取得できていません")
+                    Text("No track yet")
                         .font(.caption).foregroundStyle(.secondary)
                     Button(intent: RefreshIntent()) {
-                        Label("更新", systemImage: "arrow.clockwise").font(.caption)
+                        Label("Refresh", systemImage: "arrow.clockwise").font(.caption)
                     }
                     .buttonStyle(.plain)
                 }
@@ -106,7 +111,7 @@ struct NowPlayingWidget: Widget {
             NPWidgetView(entry: entry)
         }
         .configurationDisplayName("NowPlaying")
-        .description("再生中の曲を表示します。タップでアプリを開きます。")
+        .description("Shows the currently playing track. Tap to open the app.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
