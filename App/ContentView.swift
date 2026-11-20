@@ -36,21 +36,21 @@ struct ContentView: View {
                         .background(Color.secondary.opacity(0.12))
                         .cornerRadius(8)
                 } else {
-                    Text(status.isEmpty ? "まだ取得していません" : status)
+                    Text(status.isEmpty ? NSLocalizedString("Not fetched yet", comment: "") : status)
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 12) {
                     Button {
                         Task { await refresh() }
                     } label: {
-                        Label("取得", systemImage: "arrow.clockwise")
+                        Label("Fetch", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.bordered)
                     .disabled(loading)
                     Button {
                         showShare = true
                     } label: {
-                        Label("投稿", systemImage: "square.and.arrow.up")
+                        Label("Post", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(track == nil)
@@ -91,8 +91,8 @@ struct ContentView: View {
             artwork = nil
             postText = ""
             status = settings.source == "spotify" || (settings.refreshToken.isEmpty && settings.source == "auto")
-                ? "再生中の曲がありません（Spotify を使うには設定でトークンが必要です）"
-                : "再生中の曲がありません"
+                ? NSLocalizedString("Nothing is playing (Spotify needs a token in Settings)", comment: "")
+                : NSLocalizedString("Nothing is playing", comment: "")
             return
         }
         let (match, artData) = await ITunesMatcher.search(track: t, quality: settings.artworkQuality)
