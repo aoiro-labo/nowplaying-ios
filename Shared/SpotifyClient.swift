@@ -7,6 +7,9 @@ public struct SpotifyState {
     public var deviceName: String?
     public var deviceIsActive: Bool
     public var deviceType: String?
+    /// Spotify's own album artwork (largest image), used as a fallback
+    /// when the iTunes match has no artwork and as a manual pick option.
+    public var artworkURL: String?
 
     /// Whether this state comes from the device the app is running on.
     /// Spotify names the active phone by the device's own name; fall back
@@ -47,7 +50,9 @@ public final class SpotifyClient {
             throw SpotifyError.noItem
         }
         let artists = (item["artists"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
-        let album = (item["album"] as? [String: Any])?["name"] as? String ?? ""
+        let albumObj = item["album"] as? [String: Any]
+        let album = albumObj?["name"] as? String ?? ""
+        let artworkURL = (albumObj?["images"] as? [[String: Any]])?.first?["url"] as? String
         let url = (item["external_urls"] as? [String: Any])?["spotify"] as? String
         let deviceObj = obj["device"] as? [String: Any]
         let device = deviceObj?["name"] as? String
@@ -61,7 +66,8 @@ public final class SpotifyClient {
                           source: "spotify",
                           spotifyURL: url)
         return SpotifyState(track: track, isPlaying: playing, deviceName: device,
-                            deviceIsActive: deviceActive, deviceType: deviceType)
+                            deviceIsActive: deviceActive, deviceType: deviceType,
+                            artworkURL: artworkURL)
     }
 
     private func accessToken() async throws -> String {
