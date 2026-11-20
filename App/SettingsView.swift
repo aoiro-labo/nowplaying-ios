@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     private let settings = NPSettings()
 
     @State private var refreshToken: String = ""
@@ -24,6 +25,13 @@ struct SettingsView: View {
     @State private var misskeyInstance: String = ""
     @State private var misskeyToken: String = ""
     @State private var presets: [String] = []
+    @State private var lastfmUsername: String = ""
+    @State private var lastfmAPIKey: String = ""
+    @State private var lastfmAPISecret: String = ""
+    @State private var lastfmSessionKey: String = ""
+    @State private var lastfmScrobble: Bool = false
+    @State private var pendingToken: String = ""
+    @State private var lfmMessage: String = ""
     @State private var showProbe = false
 
     var body: some View {
@@ -47,6 +55,7 @@ struct SettingsView: View {
                         Text("Auto (this device first)").tag("auto")
                         Text("Spotify").tag("spotify")
                         Text("Apple Music").tag("applemusic")
+                        Text("Last.fm").tag("lastfm")
                     }.pickerStyle(.inline).labelsHidden()
                 }
                 Section("URL") {
@@ -133,6 +142,38 @@ struct SettingsView: View {
                     Text("Create an API token on your instance under Settings, API.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                Section {
+                    TextField("Username", text: $lastfmUsername)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    TextField("API Key", text: $lastfmAPIKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("API Secret", text: $lastfmAPISecret)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if lastfmSessionKey.isEmpty {
+                        Button("Connect Last.fm") { Task { await connectLastFm() } }
+                        if !pendingToken.isEmpty {
+                            Button("Finish connection") { Task { await finishLastFm() } }
+                        }
+                    } else {
+                        HStack {
+                            Text("Connected")
+                            Spacer()
+                            Text(lastfmUsername).foregroundStyle(.secondary)
+                        }
+                        Button("Disconnect", role: .destructive) { disconnectLastFm() }
+                    }
+                    Toggle("Scrobble integration", isOn: $lastfmScrobble)
+                    if !lfmMessage.isEmpty {
+                        Text(lfmMessage).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text("Using Last.fm as a source needs only the username and API key. Scrobbling needs the connection: Connect opens last.fm in the browser; approve there, come back, and tap Finish connection. When the integration is on, fetching sends Now Playing and posting scrobbles.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } header: {
+                    Label("Last.fm", systemImage: "waveform")
+                }
                 Section("Diagnostics") {
                     Button("MediaRemote probe") { showProbe = true }
                 }
@@ -171,6 +212,50 @@ struct SettingsView: View {
         misskeyInstance = settings.misskeyInstance
         misskeyToken = settings.misskeyToken
         presets = settings.formatPresets
+        lastfmUsername = settings.lastfmUsername
+        lastfmAPIKey = settings.lastfmAPIKey
+        lastfmAPISecret = settings.lastfmAPISecret
+        lastfmSessionKey = settings.lastfmSessionKey
+        lastfmScrobble = settings.lastfmScrobble
+    }
+
+    private func connectLastFm() async {
+        lfmMessage = ""
+        do {
+            let token = try await LastFmClient.getToken(
+                apiKey: lastfmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines),
+                apiSecret: lastfmAPISecret.trimmingCharacters(in: .whitespacesAndNewlines))
+            pendingToken = token
+            openURL(LastFmClient.authURL(
+                apiKey: lastfmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines),
+                token: token))
+            lfmMessage = NSLocalizedString("Approve in the browser, then tap Finish connection.", comment: "")
+        } catch {
+            lfmMessage = error.localizedDescription
+        }
+    }
+
+    private func finishLastFm() async {
+        lfmMessage = ""
+        do {
+            let s = try await LastFmClient.getSession(
+                token: pendingToken,
+                apiKey: lastfmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines),
+                apiSecret: lastfmAPISecret.trimmingCharacters(in: .whitespacesAndNewlines))
+            settings.lastfmSessionKey = s.key
+            settings.lastfmUsername = s.username
+            lastfmSessionKey = s.key
+            lastfmUsername = s.username
+            pendingToken = ""
+        } catch {
+            lfmMessage = error.localizedDescription
+        }
+    }
+
+    private func disconnectLastFm() {
+        settings.lastfmSessionKey = ""
+        lastfmSessionKey = ""
+        pendingToken = ""
     }
 
     private func save() {
@@ -194,5 +279,9 @@ struct SettingsView: View {
         settings.misskeyInstance = misskeyInstance.trimmingCharacters(in: .whitespacesAndNewlines)
         settings.misskeyToken = misskeyToken.trimmingCharacters(in: .whitespacesAndNewlines)
         settings.formatPresets = presets
+        settings.lastfmUsername = lastfmUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.lastfmAPIKey = lastfmAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.lastfmAPISecret = lastfmAPISecret.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.lastfmScrobble = lastfmScrobble
     }
 }
