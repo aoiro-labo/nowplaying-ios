@@ -1,5 +1,11 @@
 import Foundation
 
+/// A resolved track plus whether it is actually playing (vs paused).
+public struct ResolvedTrack {
+    public var track: Track
+    public var isPlaying: Bool
+}
+
 /// Source resolution. "auto" means: prefer what is actually playing
 /// on THIS device.
 ///
@@ -13,31 +19,48 @@ import Foundation
 /// device never beats a track on this one.
 public enum Resolver {
     public static func resolve(settings: NPSettings) async -> Track? {
+        await resolveDetailed(settings: settings)?.track
+    }
+
+    public static func resolveDetailed(settings: NPSettings) async -> ResolvedTrack? {
         switch settings.source {
         case "spotify":
-            return try? await SpotifyClient(settings: settings).fetchPlayer().track
+            guard let st = try? await SpotifyClient(settings: settings).fetchPlayer() else { return nil }
+            return ResolvedTrack(track: st.track, isPlaying: st.isPlaying)
         case "applemusic":
-            return AppleMusicClient.currentTrack()
+            guard let t = AppleMusicClient.currentTrack() else { return nil }
+            return ResolvedTrack(track: t, isPlaying: AppleMusicClient.isPlaying)
         default:
             return await resolveAuto(settings: settings)
         }
     }
 
-    private static func resolveAuto(settings: NPSettings) async -> Track? {
+    private static func resolveAuto(settings: NPSettings) async -> ResolvedTrack? {
         let spotifyTask = Task { try? await SpotifyClient(settings: settings).fetchPlayer() }
         let appleTrack = AppleMusicClient.currentTrack()
         let applePlaying = appleTrack != nil && AppleMusicClient.isPlaying
         let spotify = await spotifyTask.value
 
         // 1. Spotify playing on this device.
-        if let st = spotify, st.isPlaying, st.isThisDevice { return st.track }
+        if let st = spotify, st.isPlaying, st.isThisDevice {
+            return ResolvedTrack(track: st.track, isPlaying: true)
+        }
         // 2. Apple Music playing on this device.
-        if applePlaying, let am = appleTrack { return am }
+        if applePlaying, let am = appleTrack {
+            return ResolvedTrack(track: am, isPlaying: true)
+        }
         // 3. Spotify paused on this device (just paused here).
-        if let st = spotify, st.isThisDevice { return st.track }
+        if let st = spotify, st.isThisDevice {
+            return ResolvedTrack(track: st.track, isPlaying: false)
+        }
         // 4. Apple Music paused track on this device.
-        if let am = appleTrack { return am }
+        if let am = appleTrack {
+            return ResolvedTrack(track: am, isPlaying: false)
+        }
         // 5. Anything Spotify reports elsewhere, rather than nothing.
-        return spotify?.track
+        if let st = spotify {
+            return ResolvedTrack(track: st.track, isPlaying: st.isPlaying)
+        }
+        return nil
     }
 }
