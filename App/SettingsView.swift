@@ -91,6 +91,29 @@ struct SettingsView: View {
         }
     }
 
+    /// Section header with a brand icon asset (rendered as a
+    /// template, so it tints like an SF Symbol).
+    private func headerBrand(_ title: LocalizedStringKey, asset: String, configured: Bool? = nil) -> some View {
+        HStack {
+            Label {
+                Text(title)
+            } icon: {
+                Image(asset)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 15, height: 15)
+            }
+            Spacer()
+            if let configured {
+                Text(configured ? "Configured" : "Not configured")
+                    .font(.caption2).bold()
+                    .foregroundStyle(configured ? .green : .secondary)
+                    .textCase(nil)
+            }
+        }
+    }
+
     /// Labeled credential row: the label stays visible even when the
     /// field is filled, so long tokens remain identifiable.
     private func fieldRow(_ label: LocalizedStringKey, text: Binding<String>,
@@ -120,7 +143,7 @@ struct SettingsView: View {
             fieldRow("Client Secret", text: $clientSecret, secure: true)
             fieldRow("Client ID", text: $clientID)
         } header: {
-            header("Spotify", icon: "music.note",
+            headerBrand("Spotify", asset: "BrandSpotify",
                    configured: !refreshToken.isEmpty && !clientSecret.isEmpty && !clientID.isEmpty)
         } footer: {
             Text("Create an app at developer.spotify.com, register the redirect URI http://127.0.0.1:8888/callback, and paste the credentials of your app here. See the README for how to get a refresh token.")
@@ -169,7 +192,19 @@ struct SettingsView: View {
     private var artworkPrioritySection: some View {
         Section {
             ForEach(sourceOrder, id: \.self) { src in
-                Label(artworkSourceName(src), systemImage: artworkSourceIcon(src))
+                if let asset = artworkSourceAsset(src) {
+                    Label {
+                        Text(artworkSourceName(src))
+                    } icon: {
+                        Image(asset)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 15, height: 15)
+                    }
+                } else {
+                    Label(artworkSourceName(src), systemImage: artworkSourceIcon(src))
+                }
             }
             .onMove { idx, dest in
                 sourceOrder.move(fromOffsets: idx, toOffset: dest)
@@ -189,6 +224,15 @@ struct SettingsView: View {
         case "musicbrainz": return "MusicBrainz"
         case "youtube": return "YouTube Music"
         default: return NSLocalizedString("Source service", comment: "")
+        }
+    }
+
+    private func artworkSourceAsset(_ src: String) -> String? {
+        switch src {
+        case "itunes": return "BrandAppleMusic"
+        case "musicbrainz": return "BrandMusicBrainz"
+        case "youtube": return "BrandYouTubeMusic"
+        default: return nil
         }
     }
 
@@ -253,7 +297,7 @@ struct SettingsView: View {
             fieldRow("Access Token", text: $xAccessToken)
             fieldRow("Access Token Secret", text: $xAccessTokenSecret, secure: true)
         } header: {
-            header("X API", icon: "paperplane",
+            headerBrand("X API", asset: "BrandX",
                    configured: !xConsumerKey.isEmpty && !xConsumerSecret.isEmpty
                        && !xAccessToken.isEmpty && !xAccessTokenSecret.isEmpty)
         } footer: {
@@ -267,7 +311,7 @@ struct SettingsView: View {
             fieldRow("App password", text: $bskyAppPassword, secure: true)
             fieldRow("Server", text: $bskyServer)
         } header: {
-            header("Bluesky", icon: "cloud",
+            headerBrand("Bluesky", asset: "BrandBluesky",
                    configured: !bskyHandle.isEmpty && !bskyAppPassword.isEmpty)
         } footer: {
             Text("Use an app password from Bluesky settings, not your main password.")
@@ -279,7 +323,7 @@ struct SettingsView: View {
             fieldRow("Instance", text: $mastodonInstance, prompt: "mstdn.jp")
             fieldRow("Access Token", text: $mastodonToken, secure: true)
         } header: {
-            header("Mastodon", icon: "message",
+            headerBrand("Mastodon", asset: "BrandMastodon",
                    configured: !mastodonInstance.isEmpty && !mastodonToken.isEmpty)
         } footer: {
             Text("Create a token on your instance under Preferences, Development, New application (scopes: write:statuses and write:media).")
@@ -291,7 +335,7 @@ struct SettingsView: View {
             fieldRow("Instance", text: $misskeyInstance, prompt: "misskey.io")
             fieldRow("API Token", text: $misskeyToken, secure: true)
         } header: {
-            header("Misskey", icon: "star",
+            headerBrand("Misskey", asset: "BrandMisskey",
                    configured: !misskeyInstance.isEmpty && !misskeyToken.isEmpty)
         } footer: {
             Text("Create an API token on your instance under Settings, API.")
@@ -321,7 +365,7 @@ struct SettingsView: View {
                 Text(lfmMessage).font(.caption).foregroundStyle(.secondary)
             }
         } header: {
-            header("Last.fm", icon: "waveform")
+            headerBrand("Last.fm", asset: "BrandLastfm")
         } footer: {
             Text("Using Last.fm as a source needs only the username and API key. Scrobbling needs the connection: Connect opens last.fm in the browser; approve there, come back, and tap Finish connection. When the integration is on, fetching sends Now Playing and posting scrobbles.")
         }
