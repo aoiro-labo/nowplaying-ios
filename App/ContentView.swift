@@ -400,7 +400,7 @@ struct ContentView: View {
         ## アプリ
         - バージョン: \(appVersion)
         """
-        var comps = URLComponents(string: "https://github.com/aoiro-labo/nowplaying-app/issues/new")!
+        var comps = URLComponents(string: "https://github.com/aoiro-labo/nowplaying-ios/issues/new")!
         comps.queryItems = [
             URLQueryItem(name: "title", value: "[ジャケ写] \(t?.title ?? "")"),
             URLQueryItem(name: "body", value: body),
