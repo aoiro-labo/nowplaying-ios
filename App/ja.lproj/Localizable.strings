@@ -1,4 +1,5 @@
 "Settings" = "設定";
+"Diagnostics" = "診断";
 "Done" = "完了";
 "Refresh token" = "リフレッシュトークン";
 "Create an app at developer.spotify.com, register the redirect URI http://127.0.0.1:8888/callback, and paste the credentials of your app here. See the README for how to get a refresh token." = "developer.spotify.com でアプリを作成し、リダイレクトURIに http://127.0.0.1:8888/callback を登録して、そのアプリの認証情報をここに貼ってください。refresh token の取得方法は README を参照。";
