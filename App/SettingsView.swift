@@ -37,146 +37,18 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Spotify") {
-                    TextField("Refresh token", text: $refreshToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("Client Secret", text: $clientSecret)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    TextField("Client ID", text: $clientID)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("Create an app at developer.spotify.com, register the redirect URI http://127.0.0.1:8888/callback, and paste the credentials of your app here. See the README for how to get a refresh token.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Source") {
-                    Picker("Source", selection: $source) {
-                        Text("Auto (this device first)").tag("auto")
-                        Text("Spotify").tag("spotify")
-                        Text("Apple Music").tag("applemusic")
-                        Text("Last.fm").tag("lastfm")
-                    }.pickerStyle(.inline).labelsHidden()
-                }
-                Section("URL") {
-                    Picker("URL", selection: $urlMode) {
-                        Text("Off").tag("off")
-                        Text("Space-separated").tag("space")
-                        Text("New line").tag("newline")
-                    }.pickerStyle(.inline).labelsHidden()
-                    Text("If the format contains {url}, that takes precedence.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Artwork") {
-                    Toggle("Attach artwork", isOn: $artwork)
-                    Picker("Quality", selection: $artworkQuality) {
-                        Text("Standard").tag("default")
-                        Text("High (1200px)").tag("high")
-                    }
-                }
-                Section("Format") {
-                    TextField("{track} {artist} {album} {url}", text: $format, axis: .vertical)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-                Section("Format presets") {
-                    ForEach(presets, id: \.self) { preset in
-                        Button(preset) { format = preset }
-                            .foregroundStyle(.primary)
-                            .font(.footnote)
-                    }
-                    .onDelete { presets.remove(atOffsets: $0) }
-                    Button("Add current format as preset") {
-                        let f = format.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !f.isEmpty, !presets.contains(f) { presets.append(f) }
-                    }
-                    Text("Tap a preset to use it as the format. Swipe to delete.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("X API") {
-                    TextField("API Key", text: $xConsumerKey)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("API Secret", text: $xConsumerSecret)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    TextField("Access Token", text: $xAccessToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("Access Token Secret", text: $xAccessTokenSecret)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("Create an app at developer.x.com, set its permissions to Read and Write, then generate the access token for your account. Generate the token after setting Write permission, otherwise posting fails.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Bluesky") {
-                    TextField("Handle (e.g. you.bsky.social)", text: $bskyHandle)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("App password", text: $bskyAppPassword)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    TextField("Server", text: $bskyServer)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("Use an app password from Bluesky settings, not your main password.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Mastodon") {
-                    TextField("Instance (e.g. mstdn.jp)", text: $mastodonInstance)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("Access Token", text: $mastodonToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("Create a token on your instance under Preferences, Development, New application (scopes: write:statuses and write:media).")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Misskey") {
-                    TextField("Instance (e.g. misskey.io)", text: $misskeyInstance)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("API Token", text: $misskeyToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("Create an API token on your instance under Settings, API.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section {
-                    TextField("Username", text: $lastfmUsername)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    TextField("API Key", text: $lastfmAPIKey)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    SecureField("API Secret", text: $lastfmAPISecret)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    if lastfmSessionKey.isEmpty {
-                        Button("Connect Last.fm") { Task { await connectLastFm() } }
-                        if !pendingToken.isEmpty {
-                            Button("Finish connection") { Task { await finishLastFm() } }
-                        }
-                    } else {
-                        HStack {
-                            Text("Connected")
-                            Spacer()
-                            Text(lastfmUsername).foregroundStyle(.secondary)
-                        }
-                        Button("Disconnect", role: .destructive) { disconnectLastFm() }
-                    }
-                    Toggle("Scrobble integration", isOn: $lastfmScrobble)
-                    if !lfmMessage.isEmpty {
-                        Text(lfmMessage).font(.caption).foregroundStyle(.secondary)
-                    }
-                    Text("Using Last.fm as a source needs only the username and API key. Scrobbling needs the connection: Connect opens last.fm in the browser; approve there, come back, and tap Finish connection. When the integration is on, fetching sends Now Playing and posting scrobbles.")
-                        .font(.caption).foregroundStyle(.secondary)
-                } header: {
-                    Label("Last.fm", systemImage: "waveform")
-                }
-                Section("Diagnostics") {
-                    Button("MediaRemote probe") { showProbe = true }
-                }
+                spotifySection
+                sourceSection
+                urlSection
+                artworkSection
+                formatSection
+                xSection
+                blueskySection
+                mastodonSection
+                misskeySection
+                lastfmSection
+                diagnosticsSection
+                aboutSection
             }
             .sheet(isPresented: $showProbe) {
                 MediaRemoteProbeView()
@@ -191,33 +63,236 @@ struct SettingsView: View {
         }
     }
 
-    private func load() {
-        refreshToken = settings.refreshToken
-        clientSecret = settings.clientSecret
-        clientID = settings.clientID
-        source = settings.source
-        urlMode = settings.urlMode
-        artwork = settings.artworkEnabled
-        artworkQuality = settings.artworkQuality
-        format = settings.format
-        xConsumerKey = settings.xConsumerKey
-        xConsumerSecret = settings.xConsumerSecret
-        xAccessToken = settings.xAccessToken
-        xAccessTokenSecret = settings.xAccessTokenSecret
-        bskyHandle = settings.bskyHandle
-        bskyAppPassword = settings.bskyAppPassword
-        bskyServer = settings.bskyServer
-        mastodonInstance = settings.mastodonInstance
-        mastodonToken = settings.mastodonToken
-        misskeyInstance = settings.misskeyInstance
-        misskeyToken = settings.misskeyToken
-        presets = settings.formatPresets
-        lastfmUsername = settings.lastfmUsername
-        lastfmAPIKey = settings.lastfmAPIKey
-        lastfmAPISecret = settings.lastfmAPISecret
-        lastfmSessionKey = settings.lastfmSessionKey
-        lastfmScrobble = settings.lastfmScrobble
+    // MARK: - Section helpers
+
+    /// Section header: icon + title, plus a configured/not-configured
+    /// status on the right when `configured` is given.
+    private func header(_ title: LocalizedStringKey, icon: String, configured: Bool? = nil) -> some View {
+        HStack {
+            Label(title, systemImage: icon)
+            Spacer()
+            if let configured {
+                Text(configured ? "Configured" : "Not configured")
+                    .font(.caption2).bold()
+                    .foregroundStyle(configured ? .green : .secondary)
+                    .textCase(nil)
+            }
+        }
     }
+
+    /// Labeled credential row: the label stays visible even when the
+    /// field is filled, so long tokens remain identifiable.
+    private func fieldRow(_ label: LocalizedStringKey, text: Binding<String>,
+                          secure: Bool = false, prompt: String? = nil) -> some View {
+        HStack(spacing: 10) {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 104, alignment: .leading)
+            Group {
+                if secure {
+                    SecureField("", text: text, prompt: prompt.map { Text($0) })
+                } else {
+                    TextField("", text: text, prompt: prompt.map { Text($0) })
+                }
+            }
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+        }
+    }
+
+    // MARK: - Sections
+
+    private var spotifySection: some View {
+        Section {
+            fieldRow("Refresh token", text: $refreshToken)
+            fieldRow("Client Secret", text: $clientSecret, secure: true)
+            fieldRow("Client ID", text: $clientID)
+        } header: {
+            header("Spotify", icon: "music.note",
+                   configured: !refreshToken.isEmpty && !clientSecret.isEmpty && !clientID.isEmpty)
+        } footer: {
+            Text("Create an app at developer.spotify.com, register the redirect URI http://127.0.0.1:8888/callback, and paste the credentials of your app here. See the README for how to get a refresh token.")
+        }
+    }
+
+    private var sourceSection: some View {
+        Section {
+            Picker("Source", selection: $source) {
+                Text("Auto (this device first)").tag("auto")
+                Text("Spotify").tag("spotify")
+                Text("Apple Music").tag("applemusic")
+                Text("Last.fm").tag("lastfm")
+            }.pickerStyle(.inline).labelsHidden()
+        } header: {
+            header("Source", icon: "arrow.triangle.2.circlepath")
+        }
+    }
+
+    private var urlSection: some View {
+        Section {
+            Picker("URL", selection: $urlMode) {
+                Text("Off").tag("off")
+                Text("Space-separated").tag("space")
+                Text("New line").tag("newline")
+            }.pickerStyle(.inline).labelsHidden()
+        } header: {
+            header("URL", icon: "link")
+        } footer: {
+            Text("If the format contains {url}, that takes precedence.")
+        }
+    }
+
+    private var artworkSection: some View {
+        Section {
+            Toggle("Attach artwork", isOn: $artwork)
+            Picker("Quality", selection: $artworkQuality) {
+                Text("Standard").tag("default")
+                Text("High (1200px)").tag("high")
+            }
+        } header: {
+            header("Artwork", icon: "photo")
+        }
+    }
+
+    private var formatSection: some View {
+        Section {
+            TextField("{track} {artist} {album} {url}", text: $format, axis: .vertical)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            if !presets.isEmpty {
+                ForEach(presets, id: \.self) { preset in
+                    Button(preset) { format = preset }
+                        .foregroundStyle(.primary)
+                        .font(.footnote)
+                }
+                .onDelete { presets.remove(atOffsets: $0) }
+            }
+            Button("Add current format as preset") {
+                let f = format.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !f.isEmpty, !presets.contains(f) { presets.append(f) }
+            }
+        } header: {
+            header("Format", icon: "text.quote")
+        } footer: {
+            Text("Tap a preset to use it as the format. Swipe to delete.")
+        }
+    }
+
+    private var xSection: some View {
+        Section {
+            fieldRow("API Key", text: $xConsumerKey)
+            fieldRow("API Secret", text: $xConsumerSecret, secure: true)
+            fieldRow("Access Token", text: $xAccessToken)
+            fieldRow("Access Token Secret", text: $xAccessTokenSecret, secure: true)
+        } header: {
+            header("X API", icon: "paperplane",
+                   configured: !xConsumerKey.isEmpty && !xConsumerSecret.isEmpty
+                       && !xAccessToken.isEmpty && !xAccessTokenSecret.isEmpty)
+        } footer: {
+            Text("Create an app at developer.x.com, set its permissions to Read and Write, then generate the access token for your account. Generate the token after setting Write permission, otherwise posting fails.")
+        }
+    }
+
+    private var blueskySection: some View {
+        Section {
+            fieldRow("Handle", text: $bskyHandle, prompt: "you.bsky.social")
+            fieldRow("App password", text: $bskyAppPassword, secure: true)
+            fieldRow("Server", text: $bskyServer)
+        } header: {
+            header("Bluesky", icon: "cloud",
+                   configured: !bskyHandle.isEmpty && !bskyAppPassword.isEmpty)
+        } footer: {
+            Text("Use an app password from Bluesky settings, not your main password.")
+        }
+    }
+
+    private var mastodonSection: some View {
+        Section {
+            fieldRow("Instance", text: $mastodonInstance, prompt: "mstdn.jp")
+            fieldRow("Access Token", text: $mastodonToken, secure: true)
+        } header: {
+            header("Mastodon", icon: "message",
+                   configured: !mastodonInstance.isEmpty && !mastodonToken.isEmpty)
+        } footer: {
+            Text("Create a token on your instance under Preferences, Development, New application (scopes: write:statuses and write:media).")
+        }
+    }
+
+    private var misskeySection: some View {
+        Section {
+            fieldRow("Instance", text: $misskeyInstance, prompt: "misskey.io")
+            fieldRow("API Token", text: $misskeyToken, secure: true)
+        } header: {
+            header("Misskey", icon: "star",
+                   configured: !misskeyInstance.isEmpty && !misskeyToken.isEmpty)
+        } footer: {
+            Text("Create an API token on your instance under Settings, API.")
+        }
+    }
+
+    private var lastfmSection: some View {
+        Section {
+            fieldRow("Username", text: $lastfmUsername)
+            fieldRow("API Key", text: $lastfmAPIKey)
+            fieldRow("API Secret", text: $lastfmAPISecret, secure: true)
+            if lastfmSessionKey.isEmpty {
+                Button("Connect Last.fm") { Task { await connectLastFm() } }
+                if !pendingToken.isEmpty {
+                    Button("Finish connection") { Task { await finishLastFm() } }
+                }
+            } else {
+                HStack {
+                    Text("Connected")
+                    Spacer()
+                    Text(lastfmUsername).foregroundStyle(.secondary)
+                }
+                Button("Disconnect", role: .destructive) { disconnectLastFm() }
+            }
+            Toggle("Scrobble integration", isOn: $lastfmScrobble)
+            if !lfmMessage.isEmpty {
+                Text(lfmMessage).font(.caption).foregroundStyle(.secondary)
+            }
+        } header: {
+            header("Last.fm", icon: "waveform")
+        } footer: {
+            Text("Using Last.fm as a source needs only the username and API key. Scrobbling needs the connection: Connect opens last.fm in the browser; approve there, come back, and tap Finish connection. When the integration is on, fetching sends Now Playing and posting scrobbles.")
+        }
+    }
+
+    private var diagnosticsSection: some View {
+        Section {
+            Button("MediaRemote probe") { showProbe = true }
+        } header: {
+            header("Diagnostics", icon: "stethoscope")
+        }
+    }
+
+    private var aboutSection: some View {
+        Section {
+            HStack {
+                Text("Version")
+                Spacer()
+                Text(appVersion).foregroundStyle(.secondary)
+            }
+            Link(destination: URL(string: "https://github.com/aoiro-labo/nowplaying-app")!) {
+                HStack {
+                    Text("GitHub")
+                    Spacer()
+                    Image(systemName: "arrow.up.forward.square")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            header("About", icon: "info.circle")
+        }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+    }
+
+    // MARK: - Last.fm connect flow
 
     private func connectLastFm() async {
         lfmMessage = ""
@@ -256,6 +331,36 @@ struct SettingsView: View {
         settings.lastfmSessionKey = ""
         lastfmSessionKey = ""
         pendingToken = ""
+    }
+
+    // MARK: - Load / save
+
+    private func load() {
+        refreshToken = settings.refreshToken
+        clientSecret = settings.clientSecret
+        clientID = settings.clientID
+        source = settings.source
+        urlMode = settings.urlMode
+        artwork = settings.artworkEnabled
+        artworkQuality = settings.artworkQuality
+        format = settings.format
+        xConsumerKey = settings.xConsumerKey
+        xConsumerSecret = settings.xConsumerSecret
+        xAccessToken = settings.xAccessToken
+        xAccessTokenSecret = settings.xAccessTokenSecret
+        bskyHandle = settings.bskyHandle
+        bskyAppPassword = settings.bskyAppPassword
+        bskyServer = settings.bskyServer
+        mastodonInstance = settings.mastodonInstance
+        mastodonToken = settings.mastodonToken
+        misskeyInstance = settings.misskeyInstance
+        misskeyToken = settings.misskeyToken
+        presets = settings.formatPresets
+        lastfmUsername = settings.lastfmUsername
+        lastfmAPIKey = settings.lastfmAPIKey
+        lastfmAPISecret = settings.lastfmAPISecret
+        lastfmSessionKey = settings.lastfmSessionKey
+        lastfmScrobble = settings.lastfmScrobble
     }
 
     private func save() {
