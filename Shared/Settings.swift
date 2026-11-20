@@ -50,6 +50,18 @@ public final class NPSettings {
         get { str("artworkQuality", "default") }
         set { d.set(newValue, forKey: "artworkQuality") }
     }
+    /// All artwork metadata sources, in the default priority order.
+    public static let artworkSourceIDs = ["itunes", "musicbrainz", "youtube", "source"]
+    /// The user's artwork source priority. Sources missing from the
+    /// saved value are appended in the default order.
+    public var artworkSourceOrder: [String] {
+        get {
+            let saved = str("artworkOrder", "").split(separator: ",").map(String.init)
+                .filter { Self.artworkSourceIDs.contains($0) }
+            return saved + Self.artworkSourceIDs.filter { !saved.contains($0) }
+        }
+        set { d.set(newValue.joined(separator: ","), forKey: "artworkOrder") }
+    }
     public var format: String {
         get { str("format", NPSettings.defaultFormat) }
         set { d.set(newValue, forKey: "format") }
