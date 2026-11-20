@@ -310,6 +310,14 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Link(destination: feedbackURL) {
+                HStack {
+                    Text("Report a problem")
+                    Spacer()
+                    Image(systemName: "arrow.up.forward.square")
+                        .foregroundStyle(.secondary)
+                }
+            }
         } header: {
             header("About", icon: "info.circle")
         }
@@ -317,6 +325,15 @@ struct SettingsView: View {
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+    }
+
+    private var feedbackURL: URL {
+        var comps = URLComponents(string: "https://github.com/aoiro-labo/nowplaying-app/issues/new")!
+        comps.queryItems = [
+            URLQueryItem(name: "title", value: "[フィードバック] "),
+            URLQueryItem(name: "body", value: "## 内容\n\n\n## アプリ\n- バージョン: \(appVersion)\n"),
+        ]
+        return comps.url!
     }
 
     // MARK: - Last.fm connect flow
