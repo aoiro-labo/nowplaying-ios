@@ -25,12 +25,17 @@ public struct MBCandidate {
 public enum MusicBrainzClient {
     public static func searchReleases(track: Track) async -> [MBCandidate] {
         guard !track.album.isEmpty else { return [] }
-        let q = "release:\"\(escape(track.album))\" AND artist:\"\(escape(track.artistFirst))\""
+        // Search by release title only: MusicBrainz artist credits
+        // often differ from the store's artist string (an ensemble
+        // name vs the individual singers), so an AND artist clause
+        // misses the release entirely. Exact-title matches are
+        // sorted first below instead.
+        let q = "release:\"\(escape(track.album))\""
         var comps = URLComponents(string: "https://musicbrainz.org/ws/2/release/")!
         comps.queryItems = [
             URLQueryItem(name: "query", value: q),
             URLQueryItem(name: "fmt", value: "json"),
-            URLQueryItem(name: "limit", value: "5"),
+            URLQueryItem(name: "limit", value: "10"),
         ]
         guard let url = comps.url else { return [] }
         var req = URLRequest(url: url)
@@ -40,7 +45,7 @@ public enum MusicBrainzClient {
               (resp as? HTTPURLResponse)?.statusCode == 200,
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let releases = obj["releases"] as? [[String: Any]] else { return [] }
-        return releases.compactMap { r in
+        let found: [MBCandidate] = releases.compactMap { r in
             guard let id = r["id"] as? String,
                   let title = r["title"] as? String else { return nil }
             let credit = (r["artist-credit"] as? [[String: Any]])?
@@ -50,6 +55,11 @@ public enum MusicBrainzClient {
                                artistName: credit,
                                releaseID: id,
                                date: (r["date"] as? String) ?? "")
+        }
+        let albumN = ITunesMatcher.normalizeAlbum(track.album)
+        return found.sorted {
+            (ITunesMatcher.normalizeAlbum($0.releaseTitle) == albumN ? 0 : 1)
+                < (ITunesMatcher.normalizeAlbum($1.releaseTitle) == albumN ? 0 : 1)
         }
     }
 
