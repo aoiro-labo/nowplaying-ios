@@ -31,6 +31,7 @@ struct SettingsView: View {
     @State private var lastfmAPISecret: String = ""
     @State private var lastfmSessionKey: String = ""
     @State private var lastfmScrobble: Bool = false
+    @State private var sourceOrder: [String] = []
     @State private var pendingToken: String = ""
     @State private var lfmMessage: String = ""
     @State private var showProbe = false
@@ -42,6 +43,7 @@ struct SettingsView: View {
                 sourceSection
                 urlSection
                 artworkSection
+                artworkPrioritySection
                 formatSection
                 xSection
                 blueskySection
@@ -57,6 +59,9 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { save(); dismiss() }
                 }
@@ -158,6 +163,41 @@ struct SettingsView: View {
             }
         } header: {
             header("Artwork", icon: "photo")
+        }
+    }
+
+    private var artworkPrioritySection: some View {
+        Section {
+            ForEach(sourceOrder, id: \.self) { src in
+                Label(artworkSourceName(src), systemImage: artworkSourceIcon(src))
+            }
+            .onMove { idx, dest in
+                sourceOrder.move(fromOffsets: idx, toOffset: dest)
+                settings.artworkSourceOrder = sourceOrder
+            }
+        } header: {
+            header("Artwork priority", icon: "photo.stack")
+        } footer: {
+            Text("The first source in this order with an exact album match provides the artwork. Use Edit (top left) to reorder.")
+        }
+        .onAppear { sourceOrder = settings.artworkSourceOrder }
+    }
+
+    private func artworkSourceName(_ src: String) -> String {
+        switch src {
+        case "itunes": return "iTunes"
+        case "musicbrainz": return "MusicBrainz"
+        case "youtube": return "YouTube Music"
+        default: return NSLocalizedString("Source service", comment: "")
+        }
+    }
+
+    private func artworkSourceIcon(_ src: String) -> String {
+        switch src {
+        case "itunes": return "music.note"
+        case "musicbrainz": return "building.columns"
+        case "youtube": return "play.rectangle"
+        default: return "dot.radiowaves.left.and.right"
         }
     }
 
