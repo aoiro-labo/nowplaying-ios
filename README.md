@@ -10,12 +10,13 @@ SpotifyやApple Musicで再生中の曲を `#NowPlaying` 投稿にするため�
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/images/sample-main.svg" width="270" alt="Main screen">
-  <img src="docs/images/sample-widget.svg" width="270" alt="Widget and Control Center">
-</p>
+ライトモード
+<img width="946" height="2048" alt="image" src="https://github.com/user-attachments/assets/1a39f128-9fd5-4a5c-a92b-f509a40c97fd" />
+<img width="946" height="2048" alt="image" src="https://github.com/user-attachments/assets/27ef47a9-22f8-49b5-b7f7-7159a1c868da" />
 
-*UI illustrations, drawn to match the actual layout.*
+ダークモード
+<img width="946" height="2048" alt="image" src="https://github.com/user-attachments/assets/04e4e85a-36e8-4649-9951-24b4b11a4417" />
+<img width="946" height="2048" alt="image" src="https://github.com/user-attachments/assets/b5594f6e-5abe-430a-bd30-f0dcaa4e2af0" />
 
 ## Features
 
