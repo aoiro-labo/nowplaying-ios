@@ -25,6 +25,7 @@ SpotifyやApple Musicで再生中の曲を `#NowPlaying` 投稿にするため�
 - Custom post format with `{track}` / `{artist}` / `{album}` / `{url}` placeholders, plus switchable format presets
 - Editable post text with an approximate X character count, source / playing-state badges, and a fetch history
 - Direct posting to X (app or API), Bluesky, Mastodon, and Misskey — see below
+- Optional Last.fm: fetch source (username + API key), Now Playing on fetch, and scrobble when you post
 - Home Screen widget (medium / small) with a refresh button, a Control Center control (iOS 18+), and App Shortcuts (Shortcuts / Back Tap / Siri)
 - English / Japanese UI
 
