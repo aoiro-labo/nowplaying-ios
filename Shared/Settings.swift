@@ -100,6 +100,41 @@ public final class NPSettings {
         set { d.set(newValue, forKey: "misskeyToken") }
     }
 
+    /// Saved format templates the user can switch between.
+    public var formatPresets: [String] {
+        get {
+            guard let data = d.data(forKey: "formatPresets"),
+                  let arr = try? JSONDecoder().decode([String].self, from: data),
+                  !arr.isEmpty else { return [NPSettings.defaultFormat] }
+            return arr
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                d.set(data, forKey: "formatPresets")
+            }
+        }
+    }
+
+    /// Recently fetched tracks with their composed post text, newest first.
+    public var history: [HistoryItem] {
+        get {
+            guard let data = d.data(forKey: "history") else { return [] }
+            return (try? JSONDecoder().decode([HistoryItem].self, from: data)) ?? []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                d.set(data, forKey: "history")
+            }
+        }
+    }
+
+    public func addHistory(track: Track, text: String) {
+        var h = history
+        if let first = h.first, first.track == track, first.text == text { return }
+        h.insert(HistoryItem(track: track, text: text, date: Date()), at: 0)
+        history = Array(h.prefix(20))
+    }
+
     /// Last resolved track, written by the app, read by the widget as a fallback.
     public var cachedTrack: Track? {
         get {
