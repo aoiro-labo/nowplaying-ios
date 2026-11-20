@@ -43,7 +43,9 @@ public enum LastFmClient {
         let album = (t["album"] as? [String: Any])?["#text"] as? String ?? ""
         let url = t["url"] as? String ?? ""
         let nowPlaying = ((t["@attr"] as? [String: Any])?["nowplaying"] as? String) == "true"
-        let track = Track(title: name, artists: [artist], album: album, url: url, source: "lastfm")
+        _ = url // the Last.fm page URL is not used as the post URL
+        let track = Track(title: name, artistsJoined: artist, artistFirst: artist,
+                          album: album, source: "lastfm", spotifyURL: nil)
         return (track, nowPlaying)
     }
 
