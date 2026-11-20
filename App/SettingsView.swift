@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -50,6 +51,7 @@ struct SettingsView: View {
                 diagnosticsSection
                 aboutSection
             }
+            .scrollDismissesKeyboard(.interactively)
             .sheet(isPresented: $showProbe) {
                 MediaRemoteProbeView()
             }
@@ -57,6 +59,10 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { save(); dismiss() }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Close") { dismissKeyboard() }
                 }
             }
             .onAppear(perform: load)
@@ -160,22 +166,43 @@ struct SettingsView: View {
             TextField("{track} {artist} {album} {url}", text: $format, axis: .vertical)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .onChange(of: format) { old, new in
+                    // Editing and switching share one list: when the field
+                    // is edited, the preset it came from follows the edit,
+                    // so the two never diverge or duplicate.
+                    if let idx = presets.firstIndex(of: old), !presets.contains(new) {
+                        presets[idx] = new
+                    }
+                }
             if !presets.isEmpty {
                 ForEach(presets, id: \.self) { preset in
-                    Button(preset) { format = preset }
-                        .foregroundStyle(.primary)
-                        .font(.footnote)
+                    Button {
+                        format = preset
+                    } label: {
+                        HStack {
+                            Text(preset)
+                                .font(.footnote)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if preset == format {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.tint)
+                            }
+                        }
+                    }
                 }
                 .onDelete { presets.remove(atOffsets: $0) }
             }
-            Button("Add current format as preset") {
-                let f = format.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !f.isEmpty, !presets.contains(f) { presets.append(f) }
+            if !presets.contains(format) {
+                Button("Add current format as preset") {
+                    let f = format.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !f.isEmpty { presets.append(f) }
+                }
             }
         } header: {
             header("Format", icon: "text.quote")
         } footer: {
-            Text("Tap a preset to use it as the format. Swipe to delete.")
+            Text("Tap a preset to switch. Editing the field updates the selected preset. Swipe to delete.")
         }
     }
 
@@ -331,6 +358,11 @@ struct SettingsView: View {
         settings.lastfmSessionKey = ""
         lastfmSessionKey = ""
         pendingToken = ""
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
     }
 
     // MARK: - Load / save
