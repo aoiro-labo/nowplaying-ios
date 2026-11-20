@@ -1,8 +1,21 @@
 # NowPlaying
 
+<p align="center">
+  <img src="App/Assets.xcassets/AppIcon.appiconset/IMG_1647.png" width="120" alt="App icon">
+</p>
+
 Share the track you are listening to as a `#NowPlaying` post, from Spotify or Apple Music.
 
 SpotifyやApple Musicで再生中の曲を `#NowPlaying` 投稿にするためのアプリ。
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/sample-main.svg" width="270" alt="Main screen">
+  <img src="docs/images/sample-widget.svg" width="270" alt="Widget and Control Center">
+</p>
+
+*UI illustrations, drawn to match the actual layout.*
 
 ## Features
 
