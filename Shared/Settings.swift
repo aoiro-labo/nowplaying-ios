@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Settings shared between the app and the widget through an App Group.
 /// User settings, shared between the app and the widget via App Group.
@@ -128,10 +129,11 @@ public final class NPSettings {
         }
     }
 
-    public func addHistory(track: Track, text: String) {
+    public func addHistory(track: Track, text: String, artworkData: Data? = nil) {
         var h = history
         if let first = h.first, first.track == track, first.text == text { return }
-        h.insert(HistoryItem(track: track, text: text, date: Date()), at: 0)
+        h.insert(HistoryItem(track: track, text: text, date: Date(),
+                             artworkData: NPThumb.make(artworkData)), at: 0)
         history = Array(h.prefix(20))
     }
 
@@ -146,5 +148,21 @@ public final class NPSettings {
                 d.set(data, forKey: "cachedTrack")
             }
         }
+    }
+}
+
+/// Downscales artwork for history storage (longest side 200px, JPEG),
+/// so keeping 20 history entries stays small.
+enum NPThumb {
+    static func make(_ data: Data?) -> Data? {
+        guard let data, let img = UIImage(data: data) else { return nil }
+        let maxSide: CGFloat = 200
+        let longest = max(img.size.width, img.size.height)
+        guard longest > maxSide else { return data }
+        let scale = maxSide / longest
+        let size = CGSize(width: img.size.width * scale, height: img.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let out = renderer.image { _ in img.draw(in: CGRect(origin: .zero, size: size)) }
+        return out.jpegData(compressionQuality: 0.7) ?? data
     }
 }
