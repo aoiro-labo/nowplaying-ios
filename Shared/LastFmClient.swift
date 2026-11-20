@@ -20,7 +20,7 @@ public enum LastFmClient {
     // MARK: - Read
 
     /// Latest track for the user, with its now-playing flag.
-    public static func fetchRecent(username: String, apiKey: String) async throws -> (track: Track, isPlaying: Bool) {
+    public static func fetchRecent(username: String, apiKey: String) async throws -> (track: Track, isPlaying: Bool, imageURL: String?) {
         guard !username.isEmpty, !apiKey.isEmpty else { throw LastFmError.notConfigured }
         var comps = URLComponents(string: base)!
         comps.queryItems = [
@@ -44,9 +44,15 @@ public enum LastFmClient {
         let url = t["url"] as? String ?? ""
         let nowPlaying = ((t["@attr"] as? [String: Any])?["nowplaying"] as? String) == "true"
         _ = url // the Last.fm page URL is not used as the post URL
+        var imageURL: String? = nil
+        if let images = t["image"] as? [[String: Any]] {
+            let xl = images.first { ($0["size"] as? String) == "extralarge" }
+            let pick = xl ?? images.last
+            if let s = pick?["#text"] as? String, !s.isEmpty { imageURL = s }
+        }
         let track = Track(title: name, artistsJoined: artist, artistFirst: artist,
                           album: album, source: "lastfm", spotifyURL: nil)
-        return (track, nowPlaying)
+        return (track, nowPlaying, imageURL)
     }
 
     // MARK: - Auth
