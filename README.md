@@ -1,4 +1,4 @@
-# NowPlaying
+# nowplaying-ios
 
 <p align="center">
   <img src="App/Assets.xcassets/AppIcon.appiconset/IMG_1647.png" width="120" alt="App icon">
