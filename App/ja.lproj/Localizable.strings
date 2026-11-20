@@ -50,6 +50,9 @@
 "Format presets" = "フォーマットのプリセット";
 "Add current format as preset" = "現在のフォーマットをプリセットに追加";
 "Tap a preset to use it as the format. Swipe to delete." = "タップでそのフォーマットに切替。スワイプで削除。";
+"Clear all" = "全て消去";
+"Delete" = "削除";
+"Copy post text" = "投稿文をコピー";
 "Fetch Now Playing" = "今の曲を取得";
 "Open NowPlaying" = "NowPlaying を開く";
 "Nothing is playing" = "再生中の曲がありません";
