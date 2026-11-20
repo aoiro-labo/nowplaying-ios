@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var autoArtData: Data?
     @State private var candidates: [ITunesCandidate] = []
     @State private var mbCandidates: [MBCandidate] = []
+    @State private var ytCandidates: [YTCandidate] = []
     @State private var sourceArtworkData: Data?
     @State private var manualPick: ArtworkPick = .auto
     @State private var showArtworkPicker = false
@@ -87,8 +88,11 @@ struct ContentView: View {
                     .padding(.bottom, 6)
                     .background(.bar)
             }
-            .navigationTitle("NowPlaying")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Text("NowPlaying").font(.headline)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showSettings = true } label: {
                         Image(systemName: "gearshape")
@@ -113,6 +117,7 @@ struct ContentView: View {
                 ArtworkPickerView(
                     candidates: candidates,
                     mbCandidates: mbCandidates,
+                    ytCandidates: ytCandidates,
                     autoMatch: autoMatch,
                     sourceArtworkData: sourceArtworkData,
                     sourceName: track.map { sourceName($0.source) } ?? "",
@@ -135,7 +140,7 @@ struct ContentView: View {
                     .frame(maxHeight: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .contextMenu {
-                        if !candidates.isEmpty || !mbCandidates.isEmpty || sourceArtworkData != nil {
+                        if !candidates.isEmpty || !mbCandidates.isEmpty || !ytCandidates.isEmpty || sourceArtworkData != nil {
                             Button("Choose artwork") { showArtworkPicker = true }
                         }
                         Button("Report wrong artwork") { openURL(artworkReportURL()) }
@@ -345,6 +350,14 @@ struct ContentView: View {
             - \(c.pageURL)
             - ジャケ写: \(c.artworkURL)
             """
+        case .youtubemusic(let i) where ytCandidates.indices.contains(i):
+            let c = ytCandidates[i]
+            correct = """
+            YouTube Music のアルバム
+            - アルバム: \(c.albumTitle)
+            - \(c.pageURL)
+            - ジャケ写: \(c.artworkURL)
+            """
         case .source:
             correct = "再生元サービス（\(t.map { sourceName($0.source) } ?? "")）のジャケ写"
         default:
@@ -407,6 +420,14 @@ struct ContentView: View {
             if let url = URL(string: u),
                let (d, resp) = try? await URLSession.shared.data(from: url),
                (resp as? HTTPURLResponse)?.statusCode == 200 {
+                artworkData = settings.artworkEnabled ? d : nil
+            }
+        case .youtubemusic(let i):
+            // YouTube Music picks change only the artwork, like
+            // MusicBrainz picks.
+            guard ytCandidates.indices.contains(i) else { return }
+            let c = ytCandidates[i]
+            if let d = await fetchArtwork(c.artworkURL, c.artworkURLHigh) {
                 artworkData = settings.artworkEnabled ? d : nil
             }
         case .source:
@@ -558,6 +579,7 @@ struct ContentView: View {
         autoArtData = artData
         candidates = []
         mbCandidates = []
+        ytCandidates = []
         sourceArtworkData = nil
         manualPick = .auto
         artworkData = settings.artworkEnabled ? artData : nil
@@ -595,6 +617,7 @@ struct ContentView: View {
         autoArtData = artData
         candidates = cands
         mbCandidates = []
+        ytCandidates = []
         manualPick = .auto
         lastMatch = match
         postText = composed.text
@@ -607,26 +630,57 @@ struct ContentView: View {
         sendNowPlayingIfEnabled(t)
         WidgetCenter.shared.reloadAllTimelines()
 
-        // MusicBrainz: extra artwork candidates, plus a fallback when
-        // the iTunes match brought no artwork (before the source
-        // service's own artwork, which is already in place above).
+        // Extra artwork sources: MusicBrainz and YouTube Music
+        // candidates for the picker.
         guard settings.artworkEnabled else { return }
         let mbs = await MusicBrainzClient.searchReleases(track: t)
         guard track?.title == t.title, track?.album == t.album else { return }
         mbCandidates = mbs
-        if artData == nil, manualPick == .auto {
+        let yts = await YTMusicClient.searchAlbums(track: t)
+        guard track?.title == t.title, track?.album == t.album else { return }
+        ytCandidates = yts
+        // Artwork priority: the first source in the user's order that
+        // has artwork wins. iTunes and the source service are already
+        // resolved above; MusicBrainz / YouTube Music need an exact
+        // (normalized) album match.
+        if manualPick == .auto {
             let albumN = ITunesMatcher.normalizeAlbum(t.album)
-            if let hit = mbs.first(where: { ITunesMatcher.normalizeAlbum($0.releaseTitle) == albumN }) {
-                let u = settings.artworkQuality == "high" ? hit.artworkURLHigh : hit.artworkURL
-                if let url = URL(string: u),
-                   let (d, resp) = try? await URLSession.shared.data(from: url),
-                   (resp as? HTTPURLResponse)?.statusCode == 200,
-                   track?.title == t.title {
-                    artworkData = d
-                    artwork = UIImage(data: d)
+            var chosen: Data? = nil
+            for src in settings.artworkSourceOrder {
+                if chosen != nil { break }
+                switch src {
+                case "itunes":
+                    chosen = artData
+                case "source":
+                    chosen = srcData
+                case "musicbrainz":
+                    if let hit = mbs.first(where: { ITunesMatcher.normalizeAlbum($0.releaseTitle) == albumN }) {
+                        chosen = await fetchArtwork(hit.artworkURL, hit.artworkURLHigh)
+                    }
+                case "youtube":
+                    if let hit = yts.first(where: { ITunesMatcher.normalizeAlbum($0.albumTitle) == albumN }) {
+                        chosen = await fetchArtwork(hit.artworkURL, hit.artworkURLHigh)
+                    }
+                default:
+                    break
                 }
             }
+            if let chosen, track?.title == t.title {
+                artworkData = chosen
+                artwork = UIImage(data: chosen)
+            }
         }
+    }
+
+    /// Downloads artwork at the quality-appropriate URL; only HTTP
+    /// 200 responses count (Cover Art Archive answers 404 when a
+    /// release has no cover).
+    private func fetchArtwork(_ urlStr: String, _ highStr: String) async -> Data? {
+        let u = settings.artworkQuality == "high" ? highStr : urlStr
+        guard let url = URL(string: u),
+              let (d, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return d
     }
 
     /// Approximate X (Twitter) weighted character count: URLs count as 23,
@@ -674,6 +728,7 @@ enum ArtworkPick: Equatable {
     case auto
     case candidate(Int)
     case musicbrainz(Int)
+    case youtubemusic(Int)
     case source
 }
 
@@ -683,6 +738,7 @@ enum ArtworkPick: Equatable {
 struct ArtworkPickerView: View {
     let candidates: [ITunesCandidate]
     let mbCandidates: [MBCandidate]
+    let ytCandidates: [YTCandidate]
     let autoMatch: ITunesMatch?
     let sourceArtworkData: Data?
     let sourceName: String
@@ -716,6 +772,15 @@ struct ArtworkPickerView: View {
                         }
                     } header: {
                         Text("MusicBrainz")
+                    }
+                }
+                if !ytCandidates.isEmpty {
+                    Section {
+                        ForEach(ytCandidates.indices, id: \.self) { i in
+                            ytRow(i)
+                        }
+                    } header: {
+                        Text("YouTube Music")
                     }
                 }
             }
@@ -783,6 +848,15 @@ struct ArtworkPickerView: View {
         return pickRow(selection: .musicbrainz(i),
                        thumb: .url(c.artworkURL),
                        title: c.releaseTitle,
+                       subtitle: sub)
+    }
+
+    private func ytRow(_ i: Int) -> some View {
+        let c = ytCandidates[i]
+        let sub = c.year.isEmpty ? c.artistName : "\(c.artistName) · \(c.year)"
+        return pickRow(selection: .youtubemusic(i),
+                       thumb: .url(c.artworkURL),
+                       title: c.albumTitle,
                        subtitle: sub)
     }
 
