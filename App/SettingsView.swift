@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var artwork: Bool = true
     @State private var artworkQuality: String = "default"
     @State private var format: String = ""
+    @State private var showProbe = false
 
     var body: some View {
         NavigationStack {
@@ -57,6 +58,12 @@ struct SettingsView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 }
+                Section("Diagnostics") {
+                    Button("MediaRemote probe") { showProbe = true }
+                }
+            }
+            .sheet(isPresented: $showProbe) {
+                MediaRemoteProbeView()
             }
             .navigationTitle("Settings")
             .toolbar {
