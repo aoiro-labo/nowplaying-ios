@@ -43,3 +43,13 @@
 "Instance (e.g. misskey.io)" = "インスタンス（例: misskey.io）";
 "API Token" = "APIトークン";
 "Create an API token on your instance under Settings, API." = "インスタンスの「設定 → API」でトークンを発行してください。";
+"Playing" = "再生中";
+"Paused" = "一時停止";
+"History" = "履歴";
+"Switch format" = "フォーマット切替";
+"Format presets" = "フォーマットのプリセット";
+"Add current format as preset" = "現在のフォーマットをプリセットに追加";
+"Tap a preset to use it as the format. Swipe to delete." = "タップでそのフォーマットに切替。スワイプで削除。";
+"Fetch Now Playing" = "今の曲を取得";
+"Open NowPlaying" = "NowPlaying を開く";
+"Nothing is playing" = "再生中の曲がありません";
