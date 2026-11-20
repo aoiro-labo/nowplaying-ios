@@ -234,18 +234,18 @@ struct ContentView: View {
     private var destinationsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                destButton("X app") { openXApp() }
+                destButton("X app", asset: "BrandX") { openXApp() }
                 if isConfigured("xapi") {
-                    destButton("X (API)") { Task { await postDirect("xapi") } }
+                    destButton("X (API)", asset: "BrandX") { Task { await postDirect("xapi") } }
                 }
                 if isConfigured("bluesky") {
-                    destButton("Bluesky") { Task { await postDirect("bluesky") } }
+                    destButton("Bluesky", asset: "BrandBluesky") { Task { await postDirect("bluesky") } }
                 }
                 if isConfigured("mastodon") {
-                    destButton("Mastodon") { Task { await postDirect("mastodon") } }
+                    destButton("Mastodon", asset: "BrandMastodon") { Task { await postDirect("mastodon") } }
                 }
                 if isConfigured("misskey") {
-                    destButton("Misskey") { Task { await postDirect("misskey") } }
+                    destButton("Misskey", asset: "BrandMisskey") { Task { await postDirect("misskey") } }
                 }
             }
         }
@@ -316,11 +316,22 @@ struct ContentView: View {
         .background(.quaternary, in: Capsule())
     }
 
-    private func destButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
-            .font(.subheadline)
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+    private func destButton(_ title: String, asset: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if let asset {
+                    Image(asset)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 12, height: 12)
+                }
+                Text(title)
+            }
+        }
+        .font(.subheadline)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 
     private var appVersion: String {
