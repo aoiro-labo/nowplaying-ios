@@ -1,9 +1,22 @@
 import Foundation
+import UIKit
 
 public struct SpotifyState {
     public var track: Track
     public var isPlaying: Bool
     public var deviceName: String?
+    public var deviceIsActive: Bool
+    public var deviceType: String?
+
+    /// Whether this state comes from the device the app is running on.
+    /// Spotify names the active phone by the device's own name; fall back
+    /// to the active Smartphone when the name doesn't match, so a paused
+    /// track on another device can't win over playback here.
+    public var isThisDevice: Bool {
+        if let name = deviceName, !name.isEmpty,
+           name == UIDevice.current.name { return true }
+        return deviceIsActive && deviceType == "Smartphone"
+    }
 }
 
 public enum SpotifyError: Error {
@@ -36,7 +49,10 @@ public final class SpotifyClient {
         let artists = (item["artists"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
         let album = (item["album"] as? [String: Any])?["name"] as? String ?? ""
         let url = (item["external_urls"] as? [String: Any])?["spotify"] as? String
-        let device = (obj["device"] as? [String: Any])?["name"] as? String
+        let deviceObj = obj["device"] as? [String: Any]
+        let device = deviceObj?["name"] as? String
+        let deviceActive = deviceObj?["is_active"] as? Bool ?? false
+        let deviceType = deviceObj?["type"] as? String
         let playing = obj["is_playing"] as? Bool ?? false
         let track = Track(title: name,
                           artistsJoined: artists.joined(separator: ", "),
@@ -44,7 +60,8 @@ public final class SpotifyClient {
                           album: album,
                           source: "spotify",
                           spotifyURL: url)
-        return SpotifyState(track: track, isPlaying: playing, deviceName: device)
+        return SpotifyState(track: track, isPlaying: playing, deviceName: device,
+                            deviceIsActive: deviceActive, deviceType: deviceType)
     }
 
     private func accessToken() async throws -> String {
