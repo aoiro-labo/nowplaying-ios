@@ -17,7 +17,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Spotify") {
-                    TextField("refresh_token", text: $refreshToken)
+                    TextField("Refresh token", text: $refreshToken)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     SecureField("Client Secret", text: $clientSecret)
@@ -26,42 +26,42 @@ struct SettingsView: View {
                     TextField("Client ID", text: $clientID)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Text("「NowPlaying Config」メモの内容をそのまま貼れば OK。")
+                    Text("Create an app at developer.spotify.com, register the redirect URI http://127.0.0.1:8888/callback, and paste the credentials of your app here. See the README for how to get a refresh token.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Section("取得元 (source)") {
-                    Picker("source", selection: $source) {
-                        Text("auto（この端末優先）").tag("auto")
+                Section("Source") {
+                    Picker("Source", selection: $source) {
+                        Text("Auto (this device first)").tag("auto")
                         Text("Spotify").tag("spotify")
                         Text("Apple Music").tag("applemusic")
                     }.pickerStyle(.inline).labelsHidden()
                 }
-                Section("URL の付け方 (url)") {
-                    Picker("url", selection: $urlMode) {
-                        Text("付けない").tag("off")
-                        Text("スペース区切り").tag("space")
-                        Text("改行").tag("newline")
+                Section("URL") {
+                    Picker("URL", selection: $urlMode) {
+                        Text("Off").tag("off")
+                        Text("Space-separated").tag("space")
+                        Text("New line").tag("newline")
                     }.pickerStyle(.inline).labelsHidden()
-                    Text("format に {url} が含まれている場合はそちらが優先。")
+                    Text("If the format contains {url}, that takes precedence.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Section("ジャケ写") {
-                    Toggle("ジャケ写を付ける", isOn: $artwork)
-                    Picker("画質", selection: $artworkQuality) {
-                        Text("標準").tag("default")
-                        Text("高画質 (1200px)").tag("high")
+                Section("Artwork") {
+                    Toggle("Attach artwork", isOn: $artwork)
+                    Picker("Quality", selection: $artworkQuality) {
+                        Text("Standard").tag("default")
+                        Text("High (1200px)").tag("high")
                     }
                 }
-                Section("文面 (format)") {
+                Section("Format") {
                     TextField("{track} {artist} {album} {url}", text: $format, axis: .vertical)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 }
             }
-            .navigationTitle("設定")
+            .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完了") { save(); dismiss() }
+                    Button("Done") { save(); dismiss() }
                 }
             }
             .onAppear(perform: load)
